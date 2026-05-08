@@ -1,0 +1,12 @@
+{
+  "name": "alyafour-whatsapp-bot",
+  "version": "1.0.0",
+  "description": "WhatsApp Business Bot with AI for Al Yafour General Contracting LLC",
+  "engines": {
+    "node": "18.x"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@vercel/kv": "^3.0.0"
+  }
+}
