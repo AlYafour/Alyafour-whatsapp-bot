@@ -109,6 +109,13 @@ async function handleMainMenu(from, text, session) {
 async function handleAIConversation(from, text, session) {
   const menu = MENUS[session.language];
 
+  // Greeting → restart conversation from language selection
+  if (GREETINGS.test(text)) {
+    const fresh = defaultSession();
+    await sendMessage(from, MENUS.ar.languagePrompt);
+    return fresh;
+  }
+
   // Go back to main menu
   if (needsMenu(text, session.language)) {
     session.step = 'main_menu';
