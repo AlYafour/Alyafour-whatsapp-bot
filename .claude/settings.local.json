@@ -4,7 +4,12 @@
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\Al_Yafour\\\\Desktop\\\\alyafour-whatsapp-bot\" -Recurse -File)",
       "Bash(Select-Object FullName)",
       "Bash(ConvertTo-Csv -NoTypeInformation)",
-      "Bash(Out-String)"
+      "Bash(Out-String)",
+      "Bash(git config *)",
+      "Bash(git remote *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git add *)"
     ]
   }
 }
