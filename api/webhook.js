@@ -145,31 +145,27 @@ module.exports = async (req, res) => {
   if (req.method === 'GET') return handleVerification(req, res);
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Always respond 200 quickly so Meta doesn't retry
-  res.status(200).json({ status: 'ok' });
-
   try {
     const msg = extractMessage(req.body);
     if (!msg) {
       console.log('[WH] no text message in payload (status update or unsupported type)');
-      return;
+      return res.status(200).json({ status: 'ok' });
     }
     console.log('[WH] msg from:', msg.from, '| text:', msg.text);
 
     const { id, from, text } = msg;
 
-    // Mark message as read (double blue tick)
+    // Mark message as read (double blue tick) — fire and forget
     markAsRead(id).catch(() => {});
 
     let session = await getSession(from);
 
     // New user or expired session → send language prompt
     if (session.step === 'language_selection') {
-      // If it's a fresh contact (no language yet), send the welcome prompt first
       if (!session.language && !['1', '2'].includes(text) && !/^(arabic|english|ar|en|عربية|عربي)$/i.test(text)) {
         await sendMessage(from, MENUS.ar.languagePrompt);
         await saveSession(from, session);
-        return;
+        return res.status(200).json({ status: 'ok' });
       }
       session = await handleLanguageSelection(from, text, session);
     } else if (session.step === 'main_menu') {
@@ -182,4 +178,7 @@ module.exports = async (req, res) => {
   } catch (err) {
     console.error('Webhook handler error:', err);
   }
+
+  // Respond 200 after processing so Vercel keeps the function alive until done
+  return res.status(200).json({ status: 'ok' });
 };
