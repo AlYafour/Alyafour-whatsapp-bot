@@ -2,6 +2,7 @@ const { getSession, saveSession, defaultSession } = require('../lib/sessionManag
 const { sendMessage, markAsRead } = require('../lib/whatsappApi');
 const { getAIResponse, needsHandoff, needsMenu } = require('../lib/aiHandler');
 const { isBusinessHours } = require('../lib/businessHours');
+const { DEPARTMENTS, buildContactCard } = require('../lib/departments');
 const MENUS = require('../lib/menu');
 
 // ─── Webhook verification (GET) ───────────────────────────────────────────────
@@ -81,10 +82,14 @@ async function handleMainMenu(from, text, session) {
   }
 
   session.department = deptName;
+  session.departmentKey = text;
   session.step = 'ai_conversation';
   session.history = [];
 
+  // Send intro + contact card for the selected department
+  const contactCard = buildContactCard(DEPARTMENTS[text], session.language);
   await sendMessage(from, menu.aiIntro(deptName));
+  if (contactCard) await sendMessage(from, contactCard);
   return session;
 }
 
