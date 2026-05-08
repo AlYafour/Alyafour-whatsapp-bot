@@ -1,4 +1,4 @@
-const { getSession, saveSession, defaultSession } = require('../lib/sessionManager');
+const { getSession, saveSession, defaultSession, isSessionExpired } = require('../lib/sessionManager');
 const { sendMessage, markAsRead } = require('../lib/whatsappApi');
 const { getAIResponse, needsHandoff, needsMenu } = require('../lib/aiHandler');
 const { isBusinessHours } = require('../lib/businessHours');
@@ -183,6 +183,17 @@ module.exports = async (req, res) => {
     markAsRead(id).catch(() => {});
 
     let session = await getSession(from);
+
+    // Restart if inactive for 30+ minutes
+    if (session.step !== 'language_selection' && isSessionExpired(session)) {
+      session = defaultSession();
+      await sendMessage(from, MENUS.ar.languagePrompt);
+      await saveSession(from, session);
+      return res.status(200).json({ status: 'ok' });
+    }
+
+    // Update last activity timestamp
+    session.lastActivity = Date.now();
 
     // New user or expired session → send language prompt
     if (session.step === 'language_selection') {
