@@ -150,7 +150,11 @@ module.exports = async (req, res) => {
 
   try {
     const msg = extractMessage(req.body);
-    if (!msg) return;
+    if (!msg) {
+      console.log('[WH] no text message in payload (status update or unsupported type)');
+      return;
+    }
+    console.log('[WH] msg from:', msg.from, '| text:', msg.text);
 
     const { id, from, text } = msg;
 
