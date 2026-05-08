@@ -55,9 +55,21 @@ async function handleLanguageSelection(from, text, session) {
   return session;
 }
 
+// Greetings that should reset to language selection
+const GREETINGS = /^(مرحبا|مرحباً|هلا|اهلا|أهلاً|السلام|سلام|هاي|hi|hello|hey|good\s)/i;
+
 // ─── Step: main menu selection ────────────────────────────────────────────────
 async function handleMainMenu(from, text, session) {
   const menu = MENUS[session.language];
+
+  // If user sends a greeting, restart the conversation
+  if (GREETINGS.test(text)) {
+    session.step = 'language_selection';
+    session.language = null;
+    await sendMessage(from, MENUS.ar.languagePrompt);
+    return session;
+  }
+
   const deptName = menu.departments[text];
 
   if (!deptName) {
