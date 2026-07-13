@@ -1,0 +1,17 @@
+{
+  "name": "لوحة دعم عملاء اليافور",
+  "short_name": "دعم اليافور",
+  "description": "لوحة تحكم لفريق دعم العملاء لإدارة محادثات واتساب",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f4f6f5",
+  "theme_color": "#0b5d3b",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
