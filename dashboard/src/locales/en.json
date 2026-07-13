@@ -1,0 +1,255 @@
+{
+  "app": {
+    "name": "Al Yafour General Contracting LLC",
+    "dashboardTitle": "Customer Support Dashboard",
+    "loading": "Loading…"
+  },
+  "auth": {
+    "login": {
+      "title": "Customer Support Dashboard",
+      "subtitle": "Al Yafour General Contracting LLC",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Log in",
+      "submitting": "Logging in…",
+      "invalidCredentials": "Invalid email or password",
+      "rateLimited": "Too many login attempts, please try again later"
+    },
+    "logout": "Log out"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "toggle": "Toggle theme"
+  },
+  "language": {
+    "ar": "العربية",
+    "en": "English",
+    "switch": "Switch language"
+  },
+  "nav": {
+    "conversations": "Conversations",
+    "users": "Users",
+    "backToConversations": "Back to conversations",
+    "back": "Back"
+  },
+  "sidebar": {
+    "title": "Customer Support Inbox",
+    "newConversation": "New conversation",
+    "roleAdmin": "Admin",
+    "roleAgent": "Agent"
+  },
+  "filters": {
+    "searchPlaceholder": "Search by name or number…",
+    "all": "All",
+    "pending": "Pending handoff",
+    "human": "Human",
+    "bot": "Bot",
+    "unread": "Unread",
+    "closed": "Closed"
+  },
+  "conversationList": {
+    "loading": "Loading…",
+    "empty": "No matching conversations",
+    "error": "Could not load conversations"
+  },
+  "mode": {
+    "bot": "Bot",
+    "human": "Human"
+  },
+  "status": {
+    "open": "Open",
+    "pending": "Awaiting agent",
+    "closed": "Closed"
+  },
+  "conversation": {
+    "selectPrompt": "Select a conversation from the list",
+    "loadingDetail": "Loading conversation…",
+    "assignedTo": "Agent: {{name}}",
+    "windowOpen": "Window active — {{time}} left",
+    "windowClosed": "Free-form window expired",
+    "noMessages": "No messages yet",
+    "actions": {
+      "claim": "Claim conversation",
+      "release": "Release conversation",
+      "switchToHuman": "Switch to human",
+      "returnToBot": "Return to bot",
+      "close": "Close conversation",
+      "reopen": "Reopen"
+    },
+    "confirmReturnToBot": {
+      "title": "Return conversation to the bot",
+      "message": "Agent handling will stop and automated replies will resume for this customer. Continue?",
+      "confirm": "Yes, return to bot",
+      "cancel": "Cancel"
+    },
+    "composerDisabled": {
+      "closed": "Conversation is closed — reopen it to reply",
+      "windowExpired": "The 24-hour window for this conversation has expired. Send an approved template to reopen it before replying freely.",
+      "awaitingFirstReply": "Awaiting the customer's reply. A free-form text message can't be sent outside the 24-hour window."
+    }
+  },
+  "composer": {
+    "placeholder": "Type your reply…",
+    "send": "Send",
+    "sending": "...",
+    "attach": "Attach",
+    "attachImage": "Image",
+    "attachVideo": "Video",
+    "attachDocument": "Document",
+    "attachAudio": "Audio file",
+    "attachSticker": "Sticker",
+    "attachVoice": "Voice note",
+    "attachLocation": "Location",
+    "attachContact": "Contact",
+    "replyingTo": "Replying to",
+    "cancelReply": "Cancel reply",
+    "dropHere": "Drop file here to attach",
+    "uploading": "Uploading… {{percent}}%",
+    "cancelUpload": "Cancel upload",
+    "captionPlaceholder": "Add a caption (optional)…"
+  },
+  "recorder": {
+    "start": "Start recording",
+    "stop": "Stop",
+    "cancel": "Cancel",
+    "delete": "Delete and record again",
+    "send": "Send recording",
+    "preparing": "Preparing a WhatsApp-compatible format…",
+    "permissionDenied": "Could not access the microphone. Please allow access in your browser settings.",
+    "unsupported": "Your browser does not support audio recording",
+    "recording": "Recording",
+    "preview": "Preview before sending"
+  },
+  "messageTypes": {
+    "text": "Text",
+    "image": "Image",
+    "video": "Video",
+    "audio": "Audio file",
+    "voice": "Voice note",
+    "document": "Document",
+    "sticker": "Sticker",
+    "location": "Location",
+    "contacts": "Contact",
+    "reaction": "Reaction",
+    "interactive": "Interactive reply",
+    "template": "Template",
+    "system": "System event",
+    "unknown": "Unknown message",
+    "unsupported": "Unsupported message"
+  },
+  "message": {
+    "sender": { "bot": "Bot", "agent": "Agent" },
+    "templateBadge": "· Template",
+    "openInMaps": "Open in Maps",
+    "download": "Download",
+    "openFullscreen": "View full screen",
+    "mediaLoadFailed": "Could not load the file",
+    "mediaRetry": "Retry",
+    "mediaLoading": "Loading…",
+    "dateSeparatorToday": "Today",
+    "dateSeparatorYesterday": "Yesterday"
+  },
+  "system": {
+    "userChangedNumber": "The customer changed their WhatsApp number from {{oldNumber}} to {{newNumber}}"
+  },
+  "newConversation": {
+    "title": "New Conversation",
+    "close": "Close ✕",
+    "phone": "Phone number (international format)",
+    "phonePlaceholder": "971501234567",
+    "customerName": "Customer name (optional)",
+    "searchTemplates": "Search templates…",
+    "allCategories": "All categories",
+    "allLanguages": "All languages",
+    "refresh": "Refresh ⟳",
+    "loadingTemplates": "Loading approved templates…",
+    "noTemplates": "No matching approved templates",
+    "approved": "Approved",
+    "templateLanguage": "Template language",
+    "headerVariables": "Header variables",
+    "bodyVariables": "Body variables",
+    "buttonVariables": "Button variables",
+    "headerMediaUrl": "{{type}} URL",
+    "preview": "Message preview",
+    "send": "Send",
+    "sending": "Sending…",
+    "cancel": "Cancel",
+    "category": { "MARKETING": "Marketing", "UTILITY": "Utility", "AUTHENTICATION": "Authentication" },
+    "validation": {
+      "phoneRequired": "Enter a phone number",
+      "templateRequired": "Choose a template",
+      "languageRequired": "Choose a template language",
+      "headerRequired": "Complete the header variables",
+      "headerMediaRequired": "Enter a media URL for the header",
+      "bodyRequired": "Complete every body variable"
+    }
+  },
+  "users": {
+    "title": "User Management",
+    "addTitle": "Add a new user",
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "role": "Role",
+    "roleAgent": "Agent",
+    "roleAdmin": "Admin",
+    "add": "Add user",
+    "adding": "Adding…",
+    "currentUsers": "Current users",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "loadError": "Could not load users"
+  },
+  "location": {
+    "title": "Send location",
+    "useCurrent": "Use my current location",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "name": "Location name (optional)",
+    "address": "Address (optional)",
+    "send": "Send location",
+    "detecting": "Detecting location…",
+    "geolocationDenied": "Could not access location, enter coordinates manually"
+  },
+  "contact": {
+    "title": "Send contact",
+    "name": "Name",
+    "phone": "Phone number",
+    "email": "Email (optional)",
+    "send": "Send contact"
+  },
+  "confirmations": {
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
+  "empty": {
+    "generic": "Nothing to show"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "INVALID_PHONE": "Invalid phone number. Enter it in international format",
+    "INVALID_REQUEST": "Invalid request",
+    "TEMPLATE_NOT_APPROVED": "Template not found or not approved",
+    "TEMPLATE_LANGUAGE_NOT_FOUND": "The selected language isn't available for this template",
+    "TEMPLATE_PARAMETERS_REQUIRED": "Please complete the required template variables",
+    "TEMPLATE_REQUIRED": "The 24-hour window has expired. Send an approved template to reopen the conversation",
+    "META_SEND_FAILED": "Could not send the message via WhatsApp",
+    "META_FETCH_FAILED": "Could not reach WhatsApp",
+    "MEDIA_DOWNLOAD_FAILED": "Could not download this file — you can retry",
+    "MEDIA_UNAVAILABLE": "File currently unavailable",
+    "UNSUPPORTED_MEDIA_TYPE": "Unsupported file type",
+    "FILE_TOO_LARGE": "File exceeds the allowed size",
+    "DUPLICATE_REQUEST": "This request was already sent",
+    "RATE_LIMITED": "Too many attempts, please try again later",
+    "NOT_FOUND": "Not found"
+  },
+  "toast": {
+    "actionFailed": "Action failed",
+    "sent": "Sent"
+  }
+}

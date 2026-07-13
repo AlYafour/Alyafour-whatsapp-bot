@@ -1,19 +1,18 @@
-export default function ConfirmDialog({ open, title, message, confirmLabel = 'تأكيد', cancelLabel = 'إلغاء', onConfirm, onCancel, danger }) {
-  if (!open) return null;
+import Dialog from './ui/Dialog';
+import Button from './ui/Button';
+
+export default function ConfirmDialog({ open, title, message, confirmLabel, cancelLabel, onConfirm, onCancel, danger }) {
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <h3>{title}</h3>
-        <p>{message}</p>
-        <div className="modal-actions">
-          <button type="button" className="btn btn--ghost" onClick={onCancel}>
-            {cancelLabel}
-          </button>
-          <button type="button" className={`btn ${danger ? 'btn--danger' : 'btn--primary'}`} onClick={onConfirm}>
-            {confirmLabel}
-          </button>
-        </div>
+    <Dialog open={open} onOpenChange={(v) => !v && onCancel()} title={title}>
+      <p className="text-sm text-text-muted mb-4">{message}</p>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          {cancelLabel}
+        </Button>
+        <Button type="button" variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>
+          {confirmLabel}
+        </Button>
       </div>
-    </div>
+    </Dialog>
   );
 }

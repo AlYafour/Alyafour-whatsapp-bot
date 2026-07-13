@@ -1,0 +1,255 @@
+{
+  "app": {
+    "name": "اليافور للنقليات والمقاولات العامة",
+    "dashboardTitle": "لوحة دعم العملاء",
+    "loading": "جارِ التحميل…"
+  },
+  "auth": {
+    "login": {
+      "title": "لوحة دعم العملاء",
+      "subtitle": "اليافور للنقليات والمقاولات العامة",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "submit": "تسجيل الدخول",
+      "submitting": "جارِ الدخول…",
+      "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+      "rateLimited": "محاولات تسجيل دخول كثيرة، يرجى المحاولة لاحقاً"
+    },
+    "logout": "خروج"
+  },
+  "theme": {
+    "light": "فاتح",
+    "dark": "داكن",
+    "system": "حسب النظام",
+    "toggle": "تبديل المظهر"
+  },
+  "language": {
+    "ar": "العربية",
+    "en": "English",
+    "switch": "تغيير اللغة"
+  },
+  "nav": {
+    "conversations": "المحادثات",
+    "users": "المستخدمون",
+    "backToConversations": "الرجوع للمحادثات",
+    "back": "رجوع"
+  },
+  "sidebar": {
+    "title": "صندوق دعم العملاء",
+    "newConversation": "محادثة جديدة",
+    "roleAdmin": "مدير",
+    "roleAgent": "موظف"
+  },
+  "filters": {
+    "searchPlaceholder": "ابحث بالاسم أو الرقم…",
+    "all": "الكل",
+    "pending": "بانتظار التحويل",
+    "human": "موظف",
+    "bot": "بوت",
+    "unread": "غير مقروء",
+    "closed": "مغلقة"
+  },
+  "conversationList": {
+    "loading": "جارِ التحميل…",
+    "empty": "لا توجد محادثات مطابقة",
+    "error": "تعذر تحميل المحادثات"
+  },
+  "mode": {
+    "bot": "بوت",
+    "human": "موظف"
+  },
+  "status": {
+    "open": "مفتوحة",
+    "pending": "بانتظار موظف",
+    "closed": "مغلقة"
+  },
+  "conversation": {
+    "selectPrompt": "اختر محادثة من القائمة لعرضها",
+    "loadingDetail": "جارِ تحميل المحادثة…",
+    "assignedTo": "موظف: {{name}}",
+    "windowOpen": "النافذة نشطة — متبقي {{time}}",
+    "windowClosed": "نافذة الرد الحر منتهية",
+    "noMessages": "لا توجد رسائل بعد",
+    "actions": {
+      "claim": "استلام المحادثة",
+      "release": "تحرير المحادثة",
+      "switchToHuman": "تحويل لموظف",
+      "returnToBot": "إعادة للبوت",
+      "close": "إغلاق المحادثة",
+      "reopen": "إعادة الفتح"
+    },
+    "confirmReturnToBot": {
+      "title": "إعادة المحادثة للبوت",
+      "message": "سيتم إيقاف تدخل الموظف واستئناف الردود الآلية لهذا العميل. هل تريد المتابعة؟",
+      "confirm": "نعم، أعد للبوت",
+      "cancel": "إلغاء"
+    },
+    "composerDisabled": {
+      "closed": "المحادثة مغلقة — أعد فتحها لإرسال رد",
+      "windowExpired": "انتهت نافذة الـ24 ساعة لهذه المحادثة. يلزم إرسال قالب معتمد لإعادة فتح المحادثة قبل إمكانية الرد الحر.",
+      "awaitingFirstReply": "بانتظار رد العميل. لا يمكن إرسال رسالة نصية عادية خارج نافذة 24 ساعة."
+    }
+  },
+  "composer": {
+    "placeholder": "اكتب ردك هنا…",
+    "send": "إرسال",
+    "sending": "...",
+    "attach": "إرفاق",
+    "attachImage": "صورة",
+    "attachVideo": "فيديو",
+    "attachDocument": "مستند",
+    "attachAudio": "ملف صوتي",
+    "attachSticker": "ملصق",
+    "attachVoice": "تسجيل صوتي",
+    "attachLocation": "موقع",
+    "attachContact": "جهة اتصال",
+    "replyingTo": "الرد على",
+    "cancelReply": "إلغاء الرد",
+    "dropHere": "أفلت الملف هنا للإرفاق",
+    "uploading": "جارِ الرفع… {{percent}}٪",
+    "cancelUpload": "إلغاء الرفع",
+    "captionPlaceholder": "أضف تعليقاً (اختياري)…"
+  },
+  "recorder": {
+    "start": "بدء التسجيل",
+    "stop": "إيقاف",
+    "cancel": "إلغاء",
+    "delete": "حذف وإعادة التسجيل",
+    "send": "إرسال التسجيل",
+    "preparing": "جارِ تجهيز صيغة متوافقة مع واتساب…",
+    "permissionDenied": "تعذر الوصول إلى الميكروفون. يرجى السماح بالوصول من إعدادات المتصفح.",
+    "unsupported": "متصفحك لا يدعم تسجيل الصوت",
+    "recording": "جارِ التسجيل",
+    "preview": "معاينة قبل الإرسال"
+  },
+  "messageTypes": {
+    "text": "نص",
+    "image": "صورة",
+    "video": "فيديو",
+    "audio": "ملف صوتي",
+    "voice": "رسالة صوتية",
+    "document": "مستند",
+    "sticker": "ملصق",
+    "location": "موقع",
+    "contacts": "جهة اتصال",
+    "reaction": "تفاعل",
+    "interactive": "رد تفاعلي",
+    "template": "قالب",
+    "system": "حدث نظام",
+    "unknown": "رسالة غير معروفة",
+    "unsupported": "رسالة غير مدعومة"
+  },
+  "message": {
+    "sender": { "bot": "بوت", "agent": "موظف" },
+    "templateBadge": "· قالب",
+    "openInMaps": "فتح في الخرائط",
+    "download": "تحميل",
+    "openFullscreen": "عرض بالحجم الكامل",
+    "mediaLoadFailed": "تعذر تحميل الملف",
+    "mediaRetry": "إعادة المحاولة",
+    "mediaLoading": "جارِ التحميل…",
+    "dateSeparatorToday": "اليوم",
+    "dateSeparatorYesterday": "أمس"
+  },
+  "system": {
+    "userChangedNumber": "قام العميل بتغيير رقم واتساب من {{oldNumber}} إلى {{newNumber}}"
+  },
+  "newConversation": {
+    "title": "محادثة جديدة",
+    "close": "إغلاق ✕",
+    "phone": "رقم الهاتف (بالصيغة الدولية)",
+    "phonePlaceholder": "971501234567",
+    "customerName": "اسم العميل (اختياري)",
+    "searchTemplates": "ابحث عن قالب…",
+    "allCategories": "كل الفئات",
+    "allLanguages": "كل اللغات",
+    "refresh": "تحديث ⟳",
+    "loadingTemplates": "جارِ تحميل القوالب المعتمدة…",
+    "noTemplates": "لا توجد قوالب معتمدة مطابقة",
+    "approved": "معتمد",
+    "templateLanguage": "لغة القالب",
+    "headerVariables": "متغيرات العنوان",
+    "bodyVariables": "متغيرات نص الرسالة",
+    "buttonVariables": "متغيرات الأزرار",
+    "headerMediaUrl": "رابط {{type}} (URL)",
+    "preview": "معاينة الرسالة",
+    "send": "إرسال",
+    "sending": "جارِ الإرسال…",
+    "cancel": "إلغاء",
+    "category": { "MARKETING": "تسويقي", "UTILITY": "خدمي", "AUTHENTICATION": "توثيق" },
+    "validation": {
+      "phoneRequired": "أدخل رقم الهاتف",
+      "templateRequired": "اختر القالب",
+      "languageRequired": "اختر لغة القالب",
+      "headerRequired": "أكمل متغيرات العنوان",
+      "headerMediaRequired": "أدخل رابط الوسائط للعنوان",
+      "bodyRequired": "أكمل جميع متغيرات نص الرسالة"
+    }
+  },
+  "users": {
+    "title": "إدارة المستخدمين",
+    "addTitle": "إضافة مستخدم جديد",
+    "name": "الاسم",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "role": "الدور",
+    "roleAgent": "موظف",
+    "roleAdmin": "مدير",
+    "add": "إضافة مستخدم",
+    "adding": "جارِ الإضافة…",
+    "currentUsers": "المستخدمون الحاليون",
+    "status": "الحالة",
+    "active": "مفعّل",
+    "inactive": "موقوف",
+    "activate": "تفعيل",
+    "deactivate": "إيقاف",
+    "loadError": "تعذر تحميل المستخدمين"
+  },
+  "location": {
+    "title": "إرسال موقع",
+    "useCurrent": "استخدام موقعي الحالي",
+    "latitude": "خط العرض",
+    "longitude": "خط الطول",
+    "name": "اسم الموقع (اختياري)",
+    "address": "العنوان (اختياري)",
+    "send": "إرسال الموقع",
+    "detecting": "جارِ تحديد الموقع…",
+    "geolocationDenied": "تعذر الوصول للموقع، أدخل الإحداثيات يدوياً"
+  },
+  "contact": {
+    "title": "إرسال جهة اتصال",
+    "name": "الاسم",
+    "phone": "رقم الهاتف",
+    "email": "البريد الإلكتروني (اختياري)",
+    "send": "إرسال جهة الاتصال"
+  },
+  "confirmations": {
+    "cancel": "إلغاء",
+    "confirm": "تأكيد"
+  },
+  "empty": {
+    "generic": "لا توجد بيانات لعرضها"
+  },
+  "errors": {
+    "generic": "حدث خطأ غير متوقع",
+    "INVALID_PHONE": "رقم الهاتف غير صحيح. أدخل الرقم بالصيغة الدولية",
+    "INVALID_REQUEST": "طلب غير صحيح",
+    "TEMPLATE_NOT_APPROVED": "القالب غير موجود أو غير معتمد",
+    "TEMPLATE_LANGUAGE_NOT_FOUND": "اللغة المختارة غير متوفرة لهذا القالب",
+    "TEMPLATE_PARAMETERS_REQUIRED": "الرجاء إكمال متغيرات القالب المطلوبة",
+    "TEMPLATE_REQUIRED": "انتهت نافذة الـ24 ساعة. يلزم إرسال قالب معتمد لإعادة فتح المحادثة",
+    "META_SEND_FAILED": "تعذر إرسال الرسالة عبر واتساب",
+    "META_FETCH_FAILED": "تعذر الاتصال بواتساب",
+    "MEDIA_DOWNLOAD_FAILED": "تعذر تحميل هذا الملف، يمكنك إعادة المحاولة",
+    "MEDIA_UNAVAILABLE": "الملف غير متاح حالياً",
+    "UNSUPPORTED_MEDIA_TYPE": "نوع الملف غير مدعوم",
+    "FILE_TOO_LARGE": "حجم الملف يتجاوز الحد المسموح به",
+    "DUPLICATE_REQUEST": "تم إرسال هذا الطلب بالفعل",
+    "RATE_LIMITED": "عدد كبير جداً من المحاولات، حاول لاحقاً",
+    "NOT_FOUND": "غير موجود"
+  },
+  "toast": {
+    "actionFailed": "فشل تنفيذ الإجراء",
+    "sent": "تم الإرسال"
+  }
+}

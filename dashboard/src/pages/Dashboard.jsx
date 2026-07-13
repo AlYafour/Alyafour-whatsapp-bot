@@ -1,14 +1,22 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { ArrowRight, ArrowLeft, Users as UsersIcon, LogOut, Plus } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { translateApiError } from '../utils/apiError';
 import ConversationListItem from '../components/ConversationListItem';
 import MessageBubble from '../components/MessageBubble';
 import Composer from '../components/Composer';
 import Filters from '../components/Filters';
 import ConfirmDialog from '../components/ConfirmDialog';
 import NewConversationModal from '../components/NewConversationModal';
-import { formatCountdown, MODE_LABEL, STATUS_LABEL } from '../utils/format';
+import Lightbox from '../components/Lightbox';
+import ThemeToggle from '../components/ThemeToggle';
+import LanguageToggle from '../components/LanguageToggle';
+import Button from '../components/ui/Button';
+import { formatCountdown, formatDateSeparator, isSameDay } from '../utils/format';
 
 const POLL_MS = 3000;
 
@@ -21,9 +29,17 @@ const TAB_PARAMS = {
   closed: { status: 'closed' },
 };
 
+function newIdempotencyKey() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 export default function Dashboard() {
+  const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
+  const BackIcon = i18n.dir() === 'rtl' ? ArrowRight : ArrowLeft;
 
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
@@ -38,9 +54,12 @@ export default function Dashboard() {
   const [actionBusy, setActionBusy] = useState(false);
   const [confirmReturnToBot, setConfirmReturnToBot] = useState(false);
   const [showNewConversation, setShowNewConversation] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState(null);
+  const [replyTo, setReplyTo] = useState(null);
 
   const busyRef = useRef(false);
   const messagesEndRef = useRef(null);
+  const hiddenRef = useRef(document.hidden);
 
   const loadConversations = useCallback(async (silent) => {
     if (!silent) setListLoading(true);
@@ -50,10 +69,11 @@ export default function Dashboard() {
       setConversations(data.rows || []);
       setListError('');
     } catch (err) {
-      setListError(err.message || 'تعذر تحميل المحادثات');
+      setListError(translateApiError(err, t));
     } finally {
       setListLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, search]);
 
   const loadDetail = useCallback(async (id, silent) => {
@@ -64,10 +84,11 @@ export default function Dashboard() {
       setDetail(data);
       setDetailError('');
     } catch (err) {
-      setDetailError(err.message || 'تعذر تحميل المحادثة');
+      setDetailError(translateApiError(err, t));
     } finally {
       setDetailLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -78,10 +99,13 @@ export default function Dashboard() {
     if (selectedId) loadDetail(selectedId, false);
   }, [selectedId, loadDetail]);
 
-  // Poll for updates every 3s — serverless-friendly (no websockets needed).
+  // Poll for updates every 3s, paused while the tab is hidden.
   useEffect(() => {
+    const onVisibility = () => (hiddenRef.current = document.hidden);
+    document.addEventListener('visibilitychange', onVisibility);
+
     const interval = setInterval(async () => {
-      if (busyRef.current) return;
+      if (busyRef.current || hiddenRef.current) return;
       busyRef.current = true;
       try {
         await loadConversations(true);
@@ -90,7 +114,11 @@ export default function Dashboard() {
         busyRef.current = false;
       }
     }, POLL_MS);
-    return () => clearInterval(interval);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [loadConversations, loadDetail, selectedId]);
 
   useEffect(() => {
@@ -99,6 +127,7 @@ export default function Dashboard() {
 
   async function handleSelect(conv) {
     setSelectedId(conv.id);
+    setReplyTo(null);
     if (conv.unread_count > 0) {
       try {
         await api.markRead(conv.id);
@@ -116,62 +145,128 @@ export default function Dashboard() {
       await loadConversations(true);
       if (selectedId) await loadDetail(selectedId, true);
     } catch (err) {
-      setDetailError(err.message || 'فشل تنفيذ الإجراء');
+      toast.error(translateApiError(err, t));
     } finally {
       setActionBusy(false);
     }
   }
 
-  async function handleSend(text) {
-    const { message } = await api.reply(selectedId, text);
+  async function appendAndRefresh(message) {
     setDetail((prev) => (prev ? { ...prev, messages: [...prev.messages, message] } : prev));
     await loadConversations(true);
   }
 
+  async function handleSendText(text, contextMessageWaId) {
+    const { message } = await api.reply(selectedId, text, contextMessageWaId);
+    await appendAndRefresh(message);
+  }
+
+  function handleSendAttachment(opts) {
+    return api.uploadAttachment(selectedId, opts);
+  }
+
+  async function handleSendVoice(blob, mimeType, contextMessageWaId) {
+    const file = new File([blob], `voice-${Date.now()}.${mimeType.includes('ogg') ? 'ogg' : 'm4a'}`, { type: mimeType });
+    const { promise } = api.uploadAttachment(selectedId, {
+      file,
+      type: 'voice',
+      contextMessageWaId,
+      idempotencyKey: newIdempotencyKey(),
+    });
+    const data = await promise;
+    await appendAndRefresh(data.message);
+  }
+
+  async function handleSendLocation(payload) {
+    const { message } = await api.sendLocation(selectedId, payload);
+    await appendAndRefresh(message);
+  }
+
+  async function handleSendContact(contacts) {
+    const { message } = await api.sendContact(selectedId, contacts);
+    await appendAndRefresh(message);
+  }
+
+  async function handleReact(targetWaMessageId, emoji) {
+    try {
+      await api.sendReaction(selectedId, targetWaMessageId, emoji);
+      await loadDetail(selectedId, true);
+    } catch (err) {
+      toast.error(translateApiError(err, t));
+    }
+  }
+
+  // Attachment uploads resolve with { message }, direct api.uploadAttachment
+  // consumers need that unwrapped before appendAndRefresh — wrap once here.
+  function sendAttachmentWrapped(opts) {
+    const handle = handleSendAttachment(opts);
+    return { ...handle, promise: handle.promise.then((data) => appendAndRefresh(data.message)) };
+  }
+
   const conversation = detail?.conversation;
-  const countdown = detail?.serviceWindow?.expiresAt ? formatCountdown(detail.serviceWindow.expiresAt) : null;
+  const countdown = detail?.serviceWindow?.expiresAt ? formatCountdown(detail.serviceWindow.expiresAt, i18n.language) : null;
+
+  const { visibleMessages, reactionsMap, contextMap } = useMemo(() => {
+    const messages = detail?.messages || [];
+    const cMap = new Map(messages.map((m) => [m.wa_message_id, m]));
+    const rMap = new Map();
+    for (const m of messages) {
+      if (m.message_type === 'reaction' && m.reacted_message_wa_id) {
+        rMap.set(m.reacted_message_wa_id, m.reaction_emoji);
+      }
+    }
+    return {
+      visibleMessages: messages.filter((m) => m.message_type !== 'reaction'),
+      reactionsMap: rMap,
+      contextMap: cMap,
+    };
+  }, [detail?.messages]);
 
   let composerDisabledReason = null;
-  if (conversation?.status === 'closed') composerDisabledReason = 'المحادثة مغلقة — أعد فتحها لإرسال رد';
+  if (conversation?.status === 'closed') composerDisabledReason = t('conversation.composerDisabled.closed');
   else if (detail?.serviceWindow && !detail.serviceWindow.open) {
     composerDisabledReason = conversation?.last_customer_message_at
-      ? 'انتهت نافذة الـ 24 ساعة لهذه المحادثة (TEMPLATE_REQUIRED). يلزم إرسال قالب رسالة معتمد من Meta لإعادة فتح المحادثة قبل إمكانية الرد الحر.'
-      : 'بانتظار رد العميل. لا يمكن إرسال رسالة نصية عادية خارج نافذة 24 ساعة.';
+      ? t('conversation.composerDisabled.windowExpired')
+      : t('conversation.composerDisabled.awaitingFirstReply');
   }
 
   return (
-    <div className={`app-shell ${selectedId ? 'app-shell--conversation-open' : ''}`}>
-      <aside className="sidebar">
-        <div className="sidebar__header">
+    <div className={`flex h-[100dvh] bg-surface-2 ${selectedId ? '[--pane:flex]' : ''}`}>
+      <aside className={`${selectedId ? 'hidden' : 'flex'} md:flex w-full md:w-[340px] shrink-0 flex-col border-e border-border bg-surface`}>
+        <div className="flex items-start justify-between gap-2 border-b border-border px-3.5 py-3">
           <div>
-            <div className="sidebar__title">صندوق دعم العملاء</div>
-            <div className="sidebar__user">{user?.name} — {user?.role === 'admin' ? 'مدير' : 'موظف'}</div>
+            <div className="text-sm font-bold">{t('sidebar.title')}</div>
+            <div className="text-xs text-text-muted">
+              {user?.name} — {user?.role === 'admin' ? t('sidebar.roleAdmin') : t('sidebar.roleAgent')}
+            </div>
           </div>
-          <div className="sidebar__actions">
+          <div className="flex items-center gap-1.5">
+            <ThemeToggle />
+            <LanguageToggle />
             {user?.role === 'admin' && (
-              <button type="button" className="btn btn--ghost btn--sm" onClick={() => navigate('/dashboard/users')}>
-                المستخدمون
-              </button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/users')} aria-label={t('nav.users')}>
+                <UsersIcon size={14} />
+              </Button>
             )}
-            <button type="button" className="btn btn--ghost btn--sm" onClick={logout}>
-              خروج
-            </button>
+            <Button variant="ghost" size="sm" onClick={logout} aria-label={t('auth.logout')}>
+              <LogOut size={14} />
+            </Button>
           </div>
         </div>
 
-        <div className="sidebar__new-conv">
-          <button type="button" className="btn btn--primary btn--block" onClick={() => setShowNewConversation(true)}>
-            + محادثة جديدة
-          </button>
+        <div className="px-3.5 pt-2.5">
+          <Button variant="primary" onClick={() => setShowNewConversation(true)} className="w-full justify-center">
+            <Plus size={15} /> {t('sidebar.newConversation')}
+          </Button>
         </div>
 
         <Filters active={tab} onChange={setTab} search={search} onSearchChange={setSearch} />
 
-        <div className="conv-list">
-          {listLoading && <div className="state-message">جارِ التحميل…</div>}
-          {!listLoading && listError && <div className="state-message state-message--error">{listError}</div>}
+        <div className="flex-1 overflow-y-auto">
+          {listLoading && <div className="p-6 text-center text-sm text-text-muted">{t('conversationList.loading')}</div>}
+          {!listLoading && listError && <div className="p-6 text-center text-sm text-danger">{listError}</div>}
           {!listLoading && !listError && conversations.length === 0 && (
-            <div className="state-message">لا توجد محادثات مطابقة</div>
+            <div className="p-6 text-center text-sm text-text-muted">{t('conversationList.empty')}</div>
           )}
           {!listLoading &&
             conversations.map((c) => (
@@ -180,83 +275,136 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      <main className="conversation-pane">
-        {!selectedId && <div className="state-message state-message--center">اختر محادثة من القائمة لعرضها</div>}
+      <main className={`${selectedId ? 'flex' : 'hidden'} md:flex flex-1 flex-col min-w-0`}>
+        {!selectedId && (
+          <div className="flex flex-1 items-center justify-center text-sm text-text-muted">{t('conversation.selectPrompt')}</div>
+        )}
 
-        {selectedId && detailLoading && !detail && <div className="state-message state-message--center">جارِ تحميل المحادثة…</div>}
+        {selectedId && detailLoading && !detail && (
+          <div className="flex flex-1 items-center justify-center text-sm text-text-muted">{t('conversation.loadingDetail')}</div>
+        )}
 
         {selectedId && detail && conversation && (
           <>
-            <header className="conv-header">
-              <button type="button" className="conv-header__back" onClick={() => setSelectedId(null)}>
-                ← الرجوع
-              </button>
-              <div className="conv-header__info">
-                <div className="conv-header__name">{conversation.customer_name || conversation.wa_id}</div>
-                <div className="conv-header__meta">
-                  <span>{conversation.wa_id}</span>
-                  <span className={`tag tag--mode-${conversation.mode}`}>{MODE_LABEL[conversation.mode]}</span>
-                  <span className={`tag tag--status-${conversation.status}`}>{STATUS_LABEL[conversation.status]}</span>
-                  {conversation.assigned_to_name && <span className="tag">موظف: {conversation.assigned_to_name}</span>}
-                  {countdown ? (
-                    <span className="tag tag--window-open">النافذة نشطة — متبقي {countdown}</span>
-                  ) : (
-                    <span className="tag tag--window-closed">نافذة الرد الحر منتهية</span>
-                  )}
+            <header className="flex flex-wrap items-start justify-between gap-2 border-b border-border bg-surface px-4 py-3">
+              <div className="flex items-start gap-2">
+                <button type="button" onClick={() => setSelectedId(null)} className="md:hidden text-brand-strong font-bold p-1">
+                  <BackIcon size={18} />
+                </button>
+                <div>
+                  <div className="text-base font-bold">{conversation.customer_name || conversation.wa_id}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-text-muted">
+                    <span dir="ltr">{conversation.wa_id}</span>
+                    <span className={`rounded-full border px-2 py-0.5 text-[11px] ${conversation.mode === 'human' ? 'border-pending/30 bg-pending-soft text-pending' : 'border-brand/30 bg-brand-soft text-brand-strong'}`}>
+                      {t(`mode.${conversation.mode}`)}
+                    </span>
+                    <span className={`rounded-full border px-2 py-0.5 text-[11px] ${conversation.status === 'pending' ? 'border-danger/30 bg-danger-soft text-danger' : 'border-border bg-surface-2'}`}>
+                      {t(`status.${conversation.status}`)}
+                    </span>
+                    {conversation.assigned_to_name && (
+                      <span className="rounded-full border border-border px-2 py-0.5 text-[11px]">
+                        {t('conversation.assignedTo', { name: conversation.assigned_to_name })}
+                      </span>
+                    )}
+                    {countdown ? (
+                      <span className="rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] text-brand-strong">
+                        {t('conversation.windowOpen', { time: countdown })}
+                      </span>
+                    ) : (
+                      <span className="rounded-full border border-danger/30 bg-danger-soft px-2 py-0.5 text-[11px] text-danger">
+                        {t('conversation.windowClosed')}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div className="conv-header__actions">
+              <div className="flex flex-wrap gap-1.5">
                 {!conversation.assigned_to ? (
-                  <button className="btn btn--sm" disabled={actionBusy} onClick={() => withAction(() => api.claim(conversation.id))}>
-                    استلام المحادثة
-                  </button>
+                  <Button size="sm" disabled={actionBusy} onClick={() => withAction(() => api.claim(conversation.id))}>
+                    {t('conversation.actions.claim')}
+                  </Button>
                 ) : (
-                  <button className="btn btn--sm btn--ghost" disabled={actionBusy} onClick={() => withAction(() => api.release(conversation.id))}>
-                    تحرير المحادثة
-                  </button>
+                  <Button size="sm" variant="ghost" disabled={actionBusy} onClick={() => withAction(() => api.release(conversation.id))}>
+                    {t('conversation.actions.release')}
+                  </Button>
                 )}
                 {conversation.mode === 'bot' && (
-                  <button className="btn btn--sm" disabled={actionBusy} onClick={() => withAction(() => api.switchToHuman(conversation.id))}>
-                    تحويل لموظف
-                  </button>
+                  <Button size="sm" disabled={actionBusy} onClick={() => withAction(() => api.switchToHuman(conversation.id))}>
+                    {t('conversation.actions.switchToHuman')}
+                  </Button>
                 )}
                 {conversation.mode === 'human' && (
-                  <button className="btn btn--sm btn--ghost" disabled={actionBusy} onClick={() => setConfirmReturnToBot(true)}>
-                    إعادة للبوت
-                  </button>
+                  <Button size="sm" variant="ghost" disabled={actionBusy} onClick={() => setConfirmReturnToBot(true)}>
+                    {t('conversation.actions.returnToBot')}
+                  </Button>
                 )}
                 {conversation.status !== 'closed' ? (
-                  <button className="btn btn--sm btn--danger" disabled={actionBusy} onClick={() => withAction(() => api.close(conversation.id))}>
-                    إغلاق المحادثة
-                  </button>
+                  <Button size="sm" variant="danger" disabled={actionBusy} onClick={() => withAction(() => api.close(conversation.id))}>
+                    {t('conversation.actions.close')}
+                  </Button>
                 ) : (
-                  <button className="btn btn--sm" disabled={actionBusy} onClick={() => withAction(() => api.reopen(conversation.id))}>
-                    إعادة الفتح
-                  </button>
+                  <Button size="sm" disabled={actionBusy} onClick={() => withAction(() => api.reopen(conversation.id))}>
+                    {t('conversation.actions.reopen')}
+                  </Button>
                 )}
               </div>
             </header>
 
-            {detailError && <div className="state-message state-message--error">{detailError}</div>}
+            {detailError && <div className="px-4 py-2 text-center text-sm text-danger">{detailError}</div>}
 
-            <div className="messages-pane">
-              {detail.messages.length === 0 && <div className="state-message">لا توجد رسائل بعد</div>}
-              {detail.messages.map((m) => (
-                <MessageBubble key={m.id} message={m} />
-              ))}
+            <div className="flex-1 overflow-y-auto px-3 py-3 sm:px-5">
+              {visibleMessages.length === 0 && (
+                <div className="py-8 text-center text-sm text-text-muted">{t('conversation.noMessages')}</div>
+              )}
+              {visibleMessages.map((m, i) => {
+                const prev = visibleMessages[i - 1];
+                const showSeparator = !prev || !isSameDay(prev.created_at, m.created_at);
+                return (
+                  <div key={m.id}>
+                    {showSeparator && (
+                      <div className="my-3 flex justify-center">
+                        <span className="rounded-full bg-surface px-3 py-1 text-[11px] text-text-muted shadow-sm">
+                          {formatDateSeparator(m.created_at, i18n.language, t)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="mb-1.5">
+                      <MessageBubble
+                        message={m}
+                        contextMessage={m.context_message_wa_id ? contextMap.get(m.context_message_wa_id) : null}
+                        reactionEmoji={reactionsMap.get(m.wa_message_id)}
+                        onReply={m.message_type !== 'system' ? setReplyTo : null}
+                        onReact={m.message_type !== 'system' ? handleReact : null}
+                        onOpenLightbox={setLightboxSrc}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
               <div ref={messagesEndRef} />
             </div>
 
-            <Composer disabled={!!composerDisabledReason} disabledReason={composerDisabledReason} onSend={handleSend} />
+            <Composer
+              disabled={!!composerDisabledReason}
+              disabledReason={composerDisabledReason}
+              replyTo={replyTo}
+              onCancelReply={() => setReplyTo(null)}
+              onSendText={handleSendText}
+              onSendAttachment={sendAttachmentWrapped}
+              onSendVoice={handleSendVoice}
+              onSendLocation={handleSendLocation}
+              onSendContact={handleSendContact}
+            />
           </>
         )}
       </main>
 
       <ConfirmDialog
         open={confirmReturnToBot}
-        title="إعادة المحادثة للبوت"
-        message="سيتم إيقاف تدخل الموظف واستئناف الردود الآلية لهذا العميل. هل تريد المتابعة؟"
-        confirmLabel="نعم، أعد للبوت"
+        title={t('conversation.confirmReturnToBot.title')}
+        message={t('conversation.confirmReturnToBot.message')}
+        confirmLabel={t('conversation.confirmReturnToBot.confirm')}
+        cancelLabel={t('conversation.confirmReturnToBot.cancel')}
         onCancel={() => setConfirmReturnToBot(false)}
         onConfirm={() => {
           setConfirmReturnToBot(false);
@@ -264,16 +412,17 @@ export default function Dashboard() {
         }}
       />
 
-      {showNewConversation && (
-        <NewConversationModal
-          onClose={() => setShowNewConversation(false)}
-          onCreated={async (conv) => {
-            setShowNewConversation(false);
-            await loadConversations(true);
-            setSelectedId(conv.id);
-          }}
-        />
-      )}
+      <NewConversationModal
+        open={showNewConversation}
+        onClose={() => setShowNewConversation(false)}
+        onCreated={async (conv) => {
+          setShowNewConversation(false);
+          await loadConversations(true);
+          setSelectedId(conv.id);
+        }}
+      />
+
+      <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
     </div>
   );
 }

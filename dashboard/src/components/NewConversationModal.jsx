@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { RefreshCw } from 'lucide-react';
 import { api } from '../api';
+import { translateApiError } from '../utils/apiError';
+import Dialog from './ui/Dialog';
+import Button from './ui/Button';
 
 function substitute(text, values) {
   if (!text) return text;
@@ -18,9 +23,8 @@ function newIdempotencyKey() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-const CATEGORY_LABEL = { MARKETING: 'تسويقي', UTILITY: 'خدمي', AUTHENTICATION: 'توثيق' };
-
-export default function NewConversationModal({ onClose, onCreated }) {
+export default function NewConversationModal({ open, onClose, onCreated }) {
+  const { t } = useTranslation();
   const [phone, setPhone] = useState('');
   const [customerName, setCustomerName] = useState('');
 
@@ -51,32 +55,33 @@ export default function NewConversationModal({ onClose, onCreated }) {
       setTemplates(data.templates || []);
       setTemplatesError('');
     } catch (err) {
-      setTemplatesError(err.message || 'تعذر تحميل القوالب المعتمدة من Meta');
+      setTemplatesError(translateApiError(err, t));
     } finally {
       setTemplatesLoading(false);
     }
   }
 
   useEffect(() => {
-    loadTemplates(false);
-  }, []);
+    if (open) loadTemplates(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const filteredTemplates = useMemo(() => {
-    return templates.filter((t) => {
-      if (search && !t.name.toLowerCase().includes(search.toLowerCase())) return false;
-      if (categoryFilter && t.category !== categoryFilter) return false;
-      if (languageFilterOnly && !t.languages.some((l) => l.languageCode === languageFilterOnly)) return false;
+    return templates.filter((tpl) => {
+      if (search && !tpl.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (categoryFilter && tpl.category !== categoryFilter) return false;
+      if (languageFilterOnly && !tpl.languages.some((l) => l.languageCode === languageFilterOnly)) return false;
       return true;
     });
   }, [templates, search, categoryFilter, languageFilterOnly]);
 
-  const categories = useMemo(() => Array.from(new Set(templates.map((t) => t.category))).filter(Boolean), [templates]);
+  const categories = useMemo(() => Array.from(new Set(templates.map((tpl) => tpl.category))).filter(Boolean), [templates]);
   const allLanguageCodes = useMemo(
-    () => Array.from(new Set(templates.flatMap((t) => t.languages.map((l) => l.languageCode)))),
+    () => Array.from(new Set(templates.flatMap((tpl) => tpl.languages.map((l) => l.languageCode)))),
     [templates]
   );
 
-  const selectedTemplate = templates.find((t) => t.name === selectedName) || null;
+  const selectedTemplate = templates.find((tpl) => tpl.name === selectedName) || null;
   const selectedLanguage = selectedTemplate?.languages.find((l) => l.languageCode === selectedLanguageCode) || null;
 
   const headerComp = selectedLanguage?.components.find((c) => c.type === 'HEADER') || null;
@@ -100,10 +105,6 @@ export default function NewConversationModal({ onClose, onCreated }) {
     setHeaderMedia('');
     setBodyValues(emptyArray(b?.variablesCount || 0));
     setButtonValues({});
-  }
-
-  function handleLanguageChange(languageCode) {
-    applyLanguage(selectedTemplate, languageCode);
   }
 
   function buildComponents() {
@@ -140,19 +141,19 @@ export default function NewConversationModal({ onClose, onCreated }) {
     if (!selectedLanguage) return '';
     const parts = [];
     if (headerComp?.format === 'TEXT') parts.push(substitute(headerComp.text, headerValues));
-    else if (headerComp?.requiresMedia) parts.push(`[${headerComp.format === 'IMAGE' ? 'صورة' : headerComp.format === 'VIDEO' ? 'فيديو' : 'مستند'} مرفق]`);
+    else if (headerComp?.requiresMedia) parts.push(`[${headerComp.format}]`);
     parts.push(substitute(bodyComp?.text, bodyValues));
     if (footerComp?.text) parts.push(footerComp.text);
     return parts.filter(Boolean).join('\n\n');
   }, [selectedLanguage, headerComp, bodyComp, footerComp, headerValues, bodyValues]);
 
   function validateForm() {
-    if (!phone.trim()) return 'أدخل رقم الهاتف';
-    if (!selectedTemplate) return 'اختر القالب';
-    if (!selectedLanguageCode) return 'اختر لغة القالب';
-    if (headerComp?.format === 'TEXT' && headerValues.some((v) => !v.trim())) return 'أكمل متغيرات العنوان';
-    if (headerComp?.requiresMedia && !headerMedia.trim()) return 'أدخل رابط الوسائط للعنوان';
-    if (bodyValues.some((v) => !v.trim())) return 'أكمل جميع متغيرات نص الرسالة';
+    if (!phone.trim()) return t('newConversation.validation.phoneRequired');
+    if (!selectedTemplate) return t('newConversation.validation.templateRequired');
+    if (!selectedLanguageCode) return t('newConversation.validation.languageRequired');
+    if (headerComp?.format === 'TEXT' && headerValues.some((v) => !v.trim())) return t('newConversation.validation.headerRequired');
+    if (headerComp?.requiresMedia && !headerMedia.trim()) return t('newConversation.validation.headerMediaRequired');
+    if (bodyValues.some((v) => !v.trim())) return t('newConversation.validation.bodyRequired');
     return '';
   }
 
@@ -177,173 +178,172 @@ export default function NewConversationModal({ onClose, onCreated }) {
       const data = await api.startConversation(payload, idempotencyKey);
       onCreated(data.conversation);
     } catch (err) {
-      setError(err.message || 'تعذر إرسال القالب');
+      setError(translateApiError(err, t));
     } finally {
       setSending(false);
     }
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card modal-card--wide" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
-        <div className="modal-card__header">
-          <h3>محادثة جديدة</h3>
-          <button type="button" className="btn btn--ghost btn--sm" onClick={onClose}>
-            إغلاق ✕
-          </button>
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()} title={t('newConversation.title')} wide>
+      <form onSubmit={handleSend} className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <label className="flex flex-col gap-1 text-xs font-semibold text-text-muted">
+            <span>{t('newConversation.phone')}</span>
+            <input dir="ltr" placeholder={t('newConversation.phonePlaceholder')} value={phone} onChange={(e) => setPhone(e.target.value)} required className="rounded-lg border border-border px-3 py-2 text-sm font-normal text-text" />
+          </label>
+          <label className="flex flex-col gap-1 text-xs font-semibold text-text-muted">
+            <span>{t('newConversation.customerName')}</span>
+            <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="rounded-lg border border-border px-3 py-2 text-sm font-normal text-text" />
+          </label>
         </div>
 
-        <form className="new-conv-form" onSubmit={handleSend}>
-          <div className="new-conv-form__grid">
-            <label className="field">
-              <span>رقم الهاتف (بالصيغة الدولية)</span>
-              <input dir="ltr" placeholder="971501234567" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-            </label>
-            <label className="field">
-              <span>اسم العميل (اختياري)</span>
-              <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-            </label>
+        <div className="rounded-xl border border-border p-2.5">
+          <div className="mb-2 grid grid-cols-2 gap-1.5 sm:grid-cols-[1.5fr_1fr_1fr_auto]">
+            <input
+              type="search"
+              placeholder={t('newConversation.searchTemplates')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="col-span-2 rounded-lg border border-border px-2.5 py-1.5 text-sm sm:col-span-1"
+            />
+            <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="rounded-lg border border-border px-2 py-1.5 text-sm">
+              <option value="">{t('newConversation.allCategories')}</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {t(`newConversation.category.${c}`, c)}
+                </option>
+              ))}
+            </select>
+            <select value={languageFilterOnly} onChange={(e) => setLanguageFilterOnly(e.target.value)} className="rounded-lg border border-border px-2 py-1.5 text-sm">
+              <option value="">{t('newConversation.allLanguages')}</option>
+              {allLanguageCodes.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+            <Button type="button" variant="ghost" size="sm" onClick={() => loadTemplates(true)}>
+              <RefreshCw size={14} />
+            </Button>
           </div>
 
-          <div className="template-picker">
-            <div className="template-picker__filters">
-              <input
-                type="search"
-                placeholder="ابحث عن قالب…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-                <option value="">كل الفئات</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {CATEGORY_LABEL[c] || c}
-                  </option>
-                ))}
-              </select>
-              <select value={languageFilterOnly} onChange={(e) => setLanguageFilterOnly(e.target.value)}>
-                <option value="">كل اللغات</option>
-                {allLanguageCodes.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-              <button type="button" className="btn btn--ghost btn--sm" onClick={() => loadTemplates(true)}>
-                تحديث ⟳
-              </button>
-            </div>
-
-            {templatesLoading && <div className="state-message">جارِ تحميل القوالب المعتمدة…</div>}
-            {!templatesLoading && templatesError && <div className="state-message state-message--error">{templatesError}</div>}
-            {!templatesLoading && !templatesError && filteredTemplates.length === 0 && (
-              <div className="state-message">لا توجد قوالب معتمدة مطابقة</div>
-            )}
-
-            {!templatesLoading && !templatesError && filteredTemplates.length > 0 && (
-              <div className="template-list">
-                {filteredTemplates.map((t) => (
-                  <button
-                    type="button"
-                    key={t.name}
-                    className={`template-list__item ${selectedName === t.name ? 'template-list__item--active' : ''}`}
-                    onClick={() => selectTemplate(t.name)}
-                  >
-                    <span className="template-list__name">{t.name}</span>
-                    <span className="tag">{CATEGORY_LABEL[t.category] || t.category}</span>
-                    <span className="tag tag--window-open">معتمد</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {selectedTemplate && (
-            <div className="template-editor">
-              <label className="field">
-                <span>لغة القالب</span>
-                <select value={selectedLanguageCode} onChange={(e) => handleLanguageChange(e.target.value)}>
-                  {selectedTemplate.languages.map((l) => (
-                    <option key={l.languageCode} value={l.languageCode}>
-                      {l.languageCode}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {headerComp?.format === 'TEXT' && headerComp.variablesCount > 0 && (
-                <div className="field-group">
-                  <span>متغيرات العنوان</span>
-                  {headerValues.map((v, i) => (
-                    <input
-                      key={i}
-                      placeholder={`متغير العنوان ${i + 1}`}
-                      value={v}
-                      onChange={(e) => setHeaderValues((prev) => prev.map((x, idx) => (idx === i ? e.target.value : x)))}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {headerComp?.requiresMedia && (
-                <label className="field">
-                  <span>رابط {headerComp.format === 'IMAGE' ? 'الصورة' : headerComp.format === 'VIDEO' ? 'الفيديو' : 'المستند'} (URL)</span>
-                  <input dir="ltr" placeholder="https://…" value={headerMedia} onChange={(e) => setHeaderMedia(e.target.value)} />
-                </label>
-              )}
-
-              {bodyValues.length > 0 && (
-                <div className="field-group">
-                  <span>متغيرات نص الرسالة</span>
-                  {bodyValues.map((v, i) => (
-                    <input
-                      key={i}
-                      placeholder={`متغير ${i + 1}`}
-                      value={v}
-                      onChange={(e) => setBodyValues((prev) => prev.map((x, idx) => (idx === i ? e.target.value : x)))}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {buttonsComp?.buttons.some((b) => b.variablesCount > 0) && (
-                <div className="field-group">
-                  <span>متغيرات الأزرار</span>
-                  {buttonsComp.buttons
-                    .filter((b) => b.variablesCount > 0)
-                    .map((b) => (
-                      <input
-                        key={b.index}
-                        dir="ltr"
-                        placeholder={`قيمة الزر: ${b.text || ''}`}
-                        value={buttonValues[b.index] || ''}
-                        onChange={(e) => setButtonValues((prev) => ({ ...prev, [b.index]: e.target.value }))}
-                      />
-                    ))}
-                </div>
-              )}
-
-              <div className="template-preview">
-                <div className="template-preview__label">معاينة الرسالة</div>
-                <div className="bubble bubble--agent">
-                  <div className="bubble__text">{previewText}</div>
-                </div>
-              </div>
-            </div>
+          {templatesLoading && <div className="py-4 text-center text-sm text-text-muted">{t('newConversation.loadingTemplates')}</div>}
+          {!templatesLoading && templatesError && <div className="py-4 text-center text-sm text-danger">{templatesError}</div>}
+          {!templatesLoading && !templatesError && filteredTemplates.length === 0 && (
+            <div className="py-4 text-center text-sm text-text-muted">{t('newConversation.noTemplates')}</div>
           )}
 
-          {error && <div className="auth-error">{error}</div>}
+          {!templatesLoading && !templatesError && filteredTemplates.length > 0 && (
+            <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">
+              {filteredTemplates.map((tpl) => (
+                <button
+                  type="button"
+                  key={tpl.name}
+                  onClick={() => selectTemplate(tpl.name)}
+                  className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-start text-sm ${
+                    selectedName === tpl.name ? 'border-brand bg-brand-soft' : 'border-border bg-bg hover:bg-surface-2'
+                  }`}
+                >
+                  <span className="min-w-0 flex-1 truncate font-semibold">{tpl.name}</span>
+                  <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] text-text-muted">
+                    {t(`newConversation.category.${tpl.category}`, tpl.category)}
+                  </span>
+                  <span className="shrink-0 rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] text-brand-strong">
+                    {t('newConversation.approved')}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
-          <div className="modal-actions">
-            <button type="button" className="btn btn--ghost" onClick={onClose}>
-              إلغاء
-            </button>
-            <button type="submit" className="btn btn--primary" disabled={sending || !selectedTemplate}>
-              {sending ? 'جارِ الإرسال…' : 'إرسال'}
-            </button>
+        {selectedTemplate && (
+          <div className="flex flex-col gap-3 rounded-xl border border-border p-3">
+            <label className="flex flex-col gap-1 text-xs font-semibold text-text-muted">
+              <span>{t('newConversation.templateLanguage')}</span>
+              <select value={selectedLanguageCode} onChange={(e) => applyLanguage(selectedTemplate, e.target.value)} className="rounded-lg border border-border px-2.5 py-1.5 text-sm font-normal text-text">
+                {selectedTemplate.languages.map((l) => (
+                  <option key={l.languageCode} value={l.languageCode}>
+                    {l.languageCode}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {headerComp?.format === 'TEXT' && headerComp.variablesCount > 0 && (
+              <div className="flex flex-col gap-1.5 text-xs font-semibold text-text-muted">
+                <span>{t('newConversation.headerVariables')}</span>
+                {headerValues.map((v, i) => (
+                  <input
+                    key={i}
+                    value={v}
+                    onChange={(e) => setHeaderValues((prev) => prev.map((x, idx) => (idx === i ? e.target.value : x)))}
+                    className="rounded-lg border border-border px-2.5 py-1.5 text-sm font-normal text-text"
+                  />
+                ))}
+              </div>
+            )}
+
+            {headerComp?.requiresMedia && (
+              <label className="flex flex-col gap-1 text-xs font-semibold text-text-muted">
+                <span>{t('newConversation.headerMediaUrl', { type: headerComp.format })}</span>
+                <input dir="ltr" placeholder="https://…" value={headerMedia} onChange={(e) => setHeaderMedia(e.target.value)} className="rounded-lg border border-border px-2.5 py-1.5 text-sm font-normal text-text" />
+              </label>
+            )}
+
+            {bodyValues.length > 0 && (
+              <div className="flex flex-col gap-1.5 text-xs font-semibold text-text-muted">
+                <span>{t('newConversation.bodyVariables')}</span>
+                {bodyValues.map((v, i) => (
+                  <input
+                    key={i}
+                    value={v}
+                    onChange={(e) => setBodyValues((prev) => prev.map((x, idx) => (idx === i ? e.target.value : x)))}
+                    className="rounded-lg border border-border px-2.5 py-1.5 text-sm font-normal text-text"
+                  />
+                ))}
+              </div>
+            )}
+
+            {buttonsComp?.buttons.some((b) => b.variablesCount > 0) && (
+              <div className="flex flex-col gap-1.5 text-xs font-semibold text-text-muted">
+                <span>{t('newConversation.buttonVariables')}</span>
+                {buttonsComp.buttons
+                  .filter((b) => b.variablesCount > 0)
+                  .map((b) => (
+                    <input
+                      key={b.index}
+                      dir="ltr"
+                      placeholder={b.text || ''}
+                      value={buttonValues[b.index] || ''}
+                      onChange={(e) => setButtonValues((prev) => ({ ...prev, [b.index]: e.target.value }))}
+                      className="rounded-lg border border-border px-2.5 py-1.5 text-sm font-normal text-text"
+                    />
+                  ))}
+              </div>
+            )}
+
+            <div>
+              <div className="mb-1 text-xs font-bold text-text-muted">{t('newConversation.preview')}</div>
+              <div className="bubble bubble--agent px-3 py-2">
+                <div className="whitespace-pre-wrap text-sm">{previewText}</div>
+              </div>
+            </div>
           </div>
-        </form>
-      </div>
-    </div>
+        )}
+
+        {error && <div className="rounded-lg bg-danger-soft px-3 py-2 text-xs text-danger">{error}</div>}
+
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            {t('newConversation.cancel')}
+          </Button>
+          <Button type="submit" variant="primary" disabled={sending || !selectedTemplate}>
+            {sending ? t('newConversation.sending') : t('newConversation.send')}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }

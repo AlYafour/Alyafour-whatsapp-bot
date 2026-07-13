@@ -1,11 +1,15 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
+import { TooltipProvider } from './components/ui/Tooltip';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 
 function FullScreenLoader() {
-  return <div className="state-message state-message--center full-screen">جارِ التحميل…</div>;
+  const { t } = useTranslation();
+  return <div className="full-screen-center text-sm text-text-muted">{t('app.loading')}</div>;
 }
 
 function ProtectedRoute({ children, roles }) {
@@ -45,8 +49,12 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <ToastProvider>
+      <TooltipProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </TooltipProvider>
+    </ToastProvider>
   );
 }
