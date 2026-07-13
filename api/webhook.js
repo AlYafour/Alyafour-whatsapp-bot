@@ -1,9 +1,17 @@
 const { getSession, saveSession, defaultSession, isSessionExpired } = require('../lib/sessionManager');
-const { sendMessage, markAsRead } = require('../lib/whatsappApi');
+const { markAsRead } = require('../lib/whatsappApi');
+const { sendAndLogMessage } = require('../lib/messagingService');
 const { getAIResponse, needsHandoff, needsMenu } = require('../lib/aiHandler');
 const { isBusinessHours } = require('../lib/businessHours');
 const { DEPARTMENTS, buildContactCard } = require('../lib/departments');
 const MENUS = require('../lib/menu');
+const {
+  getOrCreateConversation,
+  recordInboundMessage,
+  touchConversationOnInbound,
+  requestHandoff,
+  updateMessageStatusByWaId,
+} = require('../lib/conversationService');
 
 // ─── Webhook verification (GET) ───────────────────────────────────────────────
 function handleVerification(req, res) {
@@ -17,31 +25,45 @@ function handleVerification(req, res) {
   return res.status(403).json({ error: 'Forbidden' });
 }
 
-// ─── Extract text message from Meta payload ───────────────────────────────────
-function extractMessage(body) {
-  const message = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-  if (!message) return null;
-  const text = message.text?.body?.trim();
-  if (!text) return null;
-  return { id: message.id, from: message.from, text };
-}
-
 // ─── Detect language from text ────────────────────────────────────────────────
 function detectLanguage(text) {
   return /[؀-ۿ]/.test(text) ? 'ar' : 'en';
 }
 
+const MEDIA_TYPES = ['image', 'video', 'audio', 'document'];
+
+// ─── Classify an inbound Meta message into our storage shape ──────────────────
+function classifyMessage(message) {
+  const type = message.type;
+
+  if (type === 'text') {
+    return { messageType: 'text', text: message.text?.body?.trim() || null, mediaId: null };
+  }
+  if (MEDIA_TYPES.includes(type)) {
+    const media = message[type] || {};
+    return { messageType: type, text: media.caption || null, mediaId: media.id || null };
+  }
+  if (type === 'location') {
+    const loc = message.location || {};
+    return { messageType: 'location', text: loc.name || loc.address || null, mediaId: null };
+  }
+  return { messageType: 'unknown', text: null, mediaId: null };
+}
+
 // ─── Handle department selection ──────────────────────────────────────────────
-async function handleDeptSelection(from, key, session) {
+async function handleDeptSelection(from, key, session, conversationId) {
   const lang = session.language;
   const menu = MENUS[lang];
   const deptName = menu.departments[key];
 
   if (!deptName) return false; // not a department key
 
-  // Option 9 → human agent
+  // Option 9 → human agent handoff
   if (key === '9') {
-    await sendMessage(from, menu.humanAgent);
+    const { alreadyHandedOff } = await requestHandoff(conversationId);
+    if (!alreadyHandedOff) {
+      await sendAndLogMessage({ conversationId, waId: from, text: menu.humanAgent, senderType: 'bot' });
+    }
     session.step = 'chat';
     session.department = null;
     session.history = [];
@@ -50,7 +72,7 @@ async function handleDeptSelection(from, key, session) {
 
   // Option 8 → working hours
   if (key === '8') {
-    await sendMessage(from, menu.workingHoursInfo);
+    await sendAndLogMessage({ conversationId, waId: from, text: menu.workingHoursInfo, senderType: 'bot' });
     session.department = deptName;
     return true;
   }
@@ -59,8 +81,8 @@ async function handleDeptSelection(from, key, session) {
   session.departmentKey = key;
 
   const contactCard = buildContactCard(DEPARTMENTS[key], lang);
-  await sendMessage(from, menu.deptIntro(deptName));
-  if (contactCard) await sendMessage(from, contactCard);
+  await sendAndLogMessage({ conversationId, waId: from, text: menu.deptIntro(deptName), senderType: 'bot' });
+  if (contactCard) await sendAndLogMessage({ conversationId, waId: from, text: contactCard, senderType: 'bot' });
   return true;
 }
 
@@ -70,17 +92,61 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const msg = extractMessage(req.body);
-    if (!msg) return res.status(200).json({ status: 'ok' });
+    const value = req.body?.entry?.[0]?.changes?.[0]?.value;
 
-    const { id, from, text } = msg;
-    console.log('[WH] from:', from, '| text:', text);
+    // ── Delivery/read status callbacks for our own outbound messages ─────────
+    const statuses = value?.statuses;
+    if (statuses?.length) {
+      for (const s of statuses) {
+        updateMessageStatusByWaId(s.id, s.status).catch((e) =>
+          console.error('[WH] status update error:', e.message)
+        );
+      }
+    }
 
-    markAsRead(id).catch(() => {});
+    const message = value?.messages?.[0];
+    if (!message) return res.status(200).json({ status: 'ok' });
+
+    const from = message.from;
+    const waMessageId = message.id;
+    const { messageType, text, mediaId } = classifyMessage(message);
+    const customerName = value?.contacts?.[0]?.profile?.name || null;
+
+    console.log('[WH] from:', from, '| type:', messageType, '| text:', text);
+
+    markAsRead(waMessageId).catch(() => {});
+
+    // ── Persist to Neon before any bot processing (idempotent on wa_message_id) ─
+    const conversation = await getOrCreateConversation(from, customerName);
+    const saved = await recordInboundMessage({
+      conversationId: conversation.id,
+      waMessageId,
+      messageType,
+      text,
+      mediaId,
+      rawPayload: message,
+    });
+
+    if (!saved) {
+      // Duplicate webhook delivery — already stored, do not reprocess.
+      return res.status(200).json({ status: 'ok' });
+    }
+
+    await touchConversationOnInbound(conversation.id, { text: text || `[${messageType}]`, at: new Date() });
+
+    // ── Human mode: an agent owns this conversation, bot stays silent ────────
+    if (conversation.mode === 'human') {
+      return res.status(200).json({ status: 'ok' });
+    }
+
+    // Non-text messages are stored above but don't drive the menu/AI flow.
+    if (messageType !== 'text' || !text) {
+      return res.status(200).json({ status: 'ok' });
+    }
 
     let session = await getSession(from);
 
-    // ── Fresh start or inactivity timeout ──────────────────────────────────────
+    // ── Fresh start or inactivity timeout ────────────────────────────────────
     const isNew = session.step === 'language_selection' && !session.language;
     const timedOut = session.step !== 'language_selection' && isSessionExpired(session);
 
@@ -92,56 +158,59 @@ module.exports = async (req, res) => {
       session.lastActivity = Date.now();
 
       if (!isBusinessHours()) {
-        await sendMessage(from, MENUS[lang].outOfHours);
+        await sendAndLogMessage({ conversationId: conversation.id, waId: from, text: MENUS[lang].outOfHours, senderType: 'bot' });
         await saveSession(from, session);
         return res.status(200).json({ status: 'ok' });
       }
 
-      await sendMessage(from, MENUS[lang].welcome);
+      await sendAndLogMessage({ conversationId: conversation.id, waId: from, text: MENUS[lang].welcome, senderType: 'bot' });
       await saveSession(from, session);
       return res.status(200).json({ status: 'ok' });
     }
 
     session.lastActivity = Date.now();
 
-    // ── Auto-detect language if not set ───────────────────────────────────────
+    // ── Auto-detect language if not set ─────────────────────────────────────
     if (!session.language) session.language = detectLanguage(text);
     const lang = session.language;
     const menu = MENUS[lang];
 
-    // ── Keyword: show menu ─────────────────────────────────────────────────────
+    // ── Keyword: show menu ───────────────────────────────────────────────────
     if (needsMenu(text, lang)) {
-      await sendMessage(from, menu.menu);
+      await sendAndLogMessage({ conversationId: conversation.id, waId: from, text: menu.menu, senderType: 'bot' });
       await saveSession(from, session);
       return res.status(200).json({ status: 'ok' });
     }
 
-    // ── Keyword: human agent ───────────────────────────────────────────────────
+    // ── Keyword: human agent ─────────────────────────────────────────────────
     if (needsHandoff(text, lang)) {
-      await sendMessage(from, menu.humanAgent);
+      const { alreadyHandedOff } = await requestHandoff(conversation.id);
+      if (!alreadyHandedOff) {
+        await sendAndLogMessage({ conversationId: conversation.id, waId: from, text: menu.humanAgent, senderType: 'bot' });
+      }
       session.department = null;
       session.history = [];
       await saveSession(from, session);
       return res.status(200).json({ status: 'ok' });
     }
 
-    // ── Number 1–9: department selection ──────────────────────────────────────
+    // ── Number 1–9: department selection ─────────────────────────────────────
     if (/^[1-9]$/.test(text.trim())) {
-      const handled = await handleDeptSelection(from, text.trim(), session);
+      const handled = await handleDeptSelection(from, text.trim(), session, conversation.id);
       if (handled) {
         await saveSession(from, session);
         return res.status(200).json({ status: 'ok' });
       }
     }
 
-    // ── Out-of-hours check ─────────────────────────────────────────────────────
+    // ── Out-of-hours check ───────────────────────────────────────────────────
     if (!isBusinessHours()) {
-      await sendMessage(from, menu.outOfHours);
+      await sendAndLogMessage({ conversationId: conversation.id, waId: from, text: menu.outOfHours, senderType: 'bot' });
       await saveSession(from, session);
       return res.status(200).json({ status: 'ok' });
     }
 
-    // ── AI answers the question ────────────────────────────────────────────────
+    // ── AI answers the question ──────────────────────────────────────────────
     try {
       const aiReply = await getAIResponse(
         text,
@@ -156,10 +225,10 @@ module.exports = async (req, res) => {
       );
       if (session.history.length > 16) session.history = session.history.slice(-16);
 
-      await sendMessage(from, aiReply);
+      await sendAndLogMessage({ conversationId: conversation.id, waId: from, text: aiReply, senderType: 'bot' });
     } catch (err) {
       console.error('[AI error]', err.message);
-      await sendMessage(from, menu.humanAgent);
+      await sendAndLogMessage({ conversationId: conversation.id, waId: from, text: menu.humanAgent, senderType: 'bot' });
       session.history = [];
     }
 
