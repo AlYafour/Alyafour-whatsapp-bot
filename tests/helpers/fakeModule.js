@@ -10,4 +10,11 @@ function fakeModule(relPath, exportsObj) {
   require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports: exportsObj };
 }
 
-module.exports = { fakeModule, ROOT };
+// Same idea, but for a bare npm package name (e.g. "web-push") resolved via
+// normal node_modules lookup rather than a repo-relative path.
+function fakeBareModule(moduleName, exportsObj) {
+  const resolved = require.resolve(moduleName);
+  require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports: exportsObj };
+}
+
+module.exports = { fakeModule, fakeBareModule, ROOT };

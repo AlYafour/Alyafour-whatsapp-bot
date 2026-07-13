@@ -19,6 +19,14 @@ function jsonParseMaybe(value) {
 function createFakeDb() {
   const state = { conversations: [], messages: [], waIdHistory: [], auditLogs: [], users: {} };
 
+  // Real wall-clock Date objects can tie when several rows are inserted in
+  // the same millisecond (common in synchronous tests) — a monotonic offset
+  // guarantees strict, deterministic insertion-order sorting like real
+  // Postgres timestamps effectively give you.
+  const baseTime = Date.now();
+  let seq = 0;
+  const nextCreatedAt = () => new Date(baseTime + seq++);
+
   function findConvByWaId(waId) {
     return state.conversations.find((c) => c.wa_id === waId) || null;
   }
@@ -231,7 +239,7 @@ function createFakeDb() {
         latitude, longitude, location_name: locationName, location_address: locationAddress, contacts_data: jsonParseMaybe(contactsData),
         reaction_emoji: reactionEmoji, reacted_message_wa_id: reactedMessageWaId, context_message_wa_id: contextMessageWaId,
         interactive_data: jsonParseMaybe(interactiveData), system_data: jsonParseMaybe(systemData), media_status: mediaStatus,
-        created_at: new Date(),
+        created_at: nextCreatedAt(),
       };
       state.messages.push(msg);
       return Promise.resolve([msg]);
@@ -252,7 +260,7 @@ function createFakeDb() {
         duration_seconds: durationSeconds, latitude, longitude, location_name: locationName, location_address: locationAddress,
         contacts_data: jsonParseMaybe(contactsData), reaction_emoji: reactionEmoji, reacted_message_wa_id: reactedMessageWaId,
         context_message_wa_id: contextMessageWaId, media_status: mediaStatus,
-        created_at: new Date(),
+        created_at: nextCreatedAt(),
       };
       state.messages.push(msg);
       return Promise.resolve([msg]);
@@ -293,23 +301,70 @@ function createFakeDb() {
       return Promise.resolve(msg ? [msg] : []);
     }
 
-    if (text.includes('SELECT * FROM messages WHERE conversation_id')) {
+    if (text.includes('FROM messages m') && text.includes('WHERE m.conversation_id')) {
       const [conversationId] = values;
       return Promise.resolve(
-        state.messages.filter((m) => m.conversation_id === conversationId).sort((a, b) => a.created_at - b.created_at)
+        state.messages
+          .filter((m) => m.conversation_id === conversationId)
+          .sort((a, b) => a.created_at - b.created_at)
+          .map((m) => ({ ...m, sent_by_name: (m.sent_by && state.users[m.sent_by]?.name) || null }))
       );
     }
 
     if (text.includes('INSERT INTO audit_logs')) {
       const [userId, conversationId, action, metadata] = values;
-      state.auditLogs.push({ id: newId(), user_id: userId, conversation_id: conversationId, action, metadata: jsonParseMaybe(metadata) });
+      state.auditLogs.push({
+        id: newId(),
+        user_id: userId,
+        conversation_id: conversationId,
+        action,
+        metadata: jsonParseMaybe(metadata),
+        created_at: nextCreatedAt(),
+      });
       return Promise.resolve([]);
+    }
+
+    if (text.includes('FROM audit_logs a') && text.includes('WHERE a.conversation_id')) {
+      const [conversationId] = values;
+      return Promise.resolve(
+        state.auditLogs
+          .filter((a) => a.conversation_id === conversationId)
+          .map((a) => ({ ...a, actor_name: state.users[a.user_id]?.name || null, actor_email: state.users[a.user_id]?.email || null }))
+          .sort((a, b) => b.created_at - a.created_at)
+      );
     }
 
     throw new Error('fakeDb: unmatched query: ' + text.slice(0, 120));
   }
 
-  async function query() {
+  async function query(text, params = []) {
+    if (text.includes('FROM audit_logs a')) {
+      let idx = 0;
+      let userIdFilter = null;
+      let actionFilter = null;
+      if (text.includes('a.user_id = $')) userIdFilter = params[idx++];
+      if (text.includes('a.action = $')) actionFilter = params[idx++];
+
+      let rows = state.auditLogs.slice();
+      if (userIdFilter) rows = rows.filter((r) => r.user_id === userIdFilter);
+      if (actionFilter) rows = rows.filter((r) => r.action === actionFilter);
+      rows.sort((a, b) => b.created_at - a.created_at);
+
+      if (text.includes('COUNT(*)')) return [{ total: rows.length }];
+
+      const limit = params[idx];
+      const offset = params[idx + 1];
+      return rows.slice(offset, offset + limit).map((r) => ({
+        ...r,
+        actor_name: state.users[r.user_id]?.name || null,
+        actor_email: state.users[r.user_id]?.email || null,
+        conversation_wa_id: state.conversations.find((c) => c.id === r.conversation_id)?.wa_id || null,
+        conversation_customer_name: state.conversations.find((c) => c.id === r.conversation_id)?.customer_name || null,
+      }));
+    }
+
+    // listConversations' dynamic query isn't exercised by content in existing
+    // tests — default to empty rather than throwing.
     return [];
   }
 

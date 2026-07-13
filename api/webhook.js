@@ -16,6 +16,16 @@ const {
   updateMessageStatusByWaId,
   logAudit,
 } = require('../lib/conversationService');
+const { notifyUser, notifyAllActiveAgents } = require('../lib/webPush');
+
+// Fire-and-forget Web Push to whoever should know about new activity on a
+// human-owned (or newly handed-off) conversation. No-ops silently if VAPID
+// isn't configured — see lib/webPush.js.
+function notifyAgentsOfActivity({ conversationId, assignedTo, title, body }) {
+  const payload = { title, body, conversationId };
+  const promise = assignedTo ? notifyUser(assignedTo, payload) : notifyAllActiveAgents(payload);
+  promise.catch((err) => console.error('[WH] push notify error:', err.message));
+}
 
 // ─── Webhook verification (GET) ───────────────────────────────────────────────
 function handleVerification(req, res) {
@@ -147,6 +157,7 @@ async function handleDeptSelection(from, key, session, conversationId) {
     const { alreadyHandedOff } = await requestHandoff(conversationId);
     if (!alreadyHandedOff) {
       await sendAndLogMessage({ conversationId, waId: from, text: menu.humanAgent, senderType: 'bot' });
+      notifyAgentsOfActivity({ conversationId, assignedTo: null, title: from, body: menu.humanAgent });
     }
     session.step = 'chat';
     session.department = null;
@@ -297,6 +308,12 @@ module.exports = async (req, res) => {
 
     // ── Human mode: an agent owns this conversation, bot stays silent ────────
     if (conversation.mode === 'human') {
+      notifyAgentsOfActivity({
+        conversationId: conversation.id,
+        assignedTo: conversation.assigned_to,
+        title: conversation.customer_name || conversation.wa_id,
+        body: preview,
+      });
       return res.status(200).json({ status: 'ok' });
     }
 
@@ -348,6 +365,12 @@ module.exports = async (req, res) => {
       const { alreadyHandedOff } = await requestHandoff(conversation.id);
       if (!alreadyHandedOff) {
         await sendAndLogMessage({ conversationId: conversation.id, waId: from, text: menu.humanAgent, senderType: 'bot' });
+        notifyAgentsOfActivity({
+          conversationId: conversation.id,
+          assignedTo: conversation.assigned_to,
+          title: conversation.customer_name || conversation.wa_id,
+          body: menu.humanAgent,
+        });
       }
       session.department = null;
       session.history = [];
