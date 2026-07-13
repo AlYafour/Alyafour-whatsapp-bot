@@ -251,5 +251,36 @@
   "toast": {
     "actionFailed": "Action failed",
     "sent": "Sent"
+  },
+  "notifications": {
+    "mute": "Mute notifications",
+    "unmute": "Unmute notifications",
+    "enableTitle": "Enable notifications",
+    "permissionDenied": "Browser notifications are blocked. You can enable them from your browser settings."
+  },
+  "activity": {
+    "globalTitle": "Employee Activity Log",
+    "conversationTitle": "Conversation Activity",
+    "unknownActor": "System",
+    "actions": {
+      "login": "logged in",
+      "logout": "logged out",
+      "create_user": "added a new user",
+      "update_user": "updated a user",
+      "claim": "claimed the conversation",
+      "release": "released the conversation",
+      "switch_to_human": "switched the conversation to human",
+      "return_to_bot": "returned the conversation to the bot",
+      "close": "closed the conversation",
+      "reopen": "reopened the conversation",
+      "send_template": "sent a template",
+      "agent_reply": "sent a reply",
+      "send_attachment": "sent an attachment",
+      "send_location": "sent a location",
+      "send_contact": "sent a contact",
+      "send_reaction": "added a reaction",
+      "remove_reaction": "removed a reaction",
+      "phone_number_changed": "customer's number changed"
+    }
   }
 }

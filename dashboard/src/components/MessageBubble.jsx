@@ -73,7 +73,13 @@ const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '🙏'];
 export default function MessageBubble({ message, contextMessage, reactionEmoji, onReply, onReact, onOpenLightbox }) {
   const { t, i18n } = useTranslation();
   const isOutbound = message.direction === 'outbound';
-  const senderLabel = message.sender_type === 'agent' ? t('message.sender.agent') : message.sender_type === 'bot' ? t('message.sender.bot') : null;
+  const senderLabel =
+    message.sender_type === 'agent'
+      ? message.sent_by_name || t('message.sender.agent')
+      : message.sender_type === 'bot'
+        ? t('message.sender.bot')
+        : null;
+  const exactTimestamp = new Date(message.created_at).toLocaleString(i18n.language === 'ar' ? 'ar-AE' : 'en-US');
   const StatusIcon = isOutbound ? STATUS_ICON[message.status] : null;
   const mediaSrc = api.mediaUrl(message.id);
 
@@ -201,7 +207,7 @@ export default function MessageBubble({ message, contextMessage, reactionEmoji, 
           <ContextPreview contextMessage={contextMessage} />
           {renderBody()}
           <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-text-muted">
-            <span>{formatClock(message.created_at, i18n.language)}</span>
+            <span title={exactTimestamp}>{formatClock(message.created_at, i18n.language)}</span>
             {StatusIcon && <StatusIcon size={12} className={message.status === 'failed' ? 'text-danger' : message.status === 'read' ? 'text-brand' : ''} />}
           </div>
         </div>

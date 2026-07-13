@@ -72,6 +72,13 @@ export const api = {
 
   mediaUrl: (messageId) => `${BASE}/media/${messageId}`,
 
+  getConversationActivity: (id) => request(`/conversations/${id}/activity`),
+  getGlobalActivity: (params) => request('/activity', { params }),
+
+  getVapidPublicKey: () => request('/push/vapid-public-key'),
+  pushSubscribe: (subscription) => request('/push/subscribe', { method: 'POST', body: subscription }),
+  pushUnsubscribe: (endpoint) => request('/push/unsubscribe', { method: 'POST', body: { endpoint } }),
+
   // Uploads raw file bytes with an upload-progress callback and a cancel
   // handle (fetch() has no native upload-progress event, hence XHR here).
   uploadAttachment(conversationId, { file, type, caption, filename, contextMessageWaId, idempotencyKey, onProgress }) {

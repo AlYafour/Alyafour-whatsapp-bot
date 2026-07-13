@@ -6,6 +6,7 @@ import { TooltipProvider } from './components/ui/Tooltip';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
+import Activity from './pages/Activity';
 
 function FullScreenLoader() {
   const { t } = useTranslation();
@@ -39,6 +40,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute roles={['admin']}>
             <Users />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/activity"
+        element={
+          <ProtectedRoute roles={['admin']}>
+            <Activity />
           </ProtectedRoute>
         }
       />

@@ -251,5 +251,36 @@
   "toast": {
     "actionFailed": "فشل تنفيذ الإجراء",
     "sent": "تم الإرسال"
+  },
+  "notifications": {
+    "mute": "كتم الإشعارات",
+    "unmute": "إلغاء كتم الإشعارات",
+    "enableTitle": "تفعيل الإشعارات",
+    "permissionDenied": "تم حظر إشعارات المتصفح. يمكنك تفعيلها من إعدادات المتصفح."
+  },
+  "activity": {
+    "globalTitle": "سجل نشاط الموظفين",
+    "conversationTitle": "سجل نشاط المحادثة",
+    "unknownActor": "النظام",
+    "actions": {
+      "login": "سجّل الدخول",
+      "logout": "سجّل الخروج",
+      "create_user": "أضاف مستخدماً جديداً",
+      "update_user": "حدّث بيانات مستخدم",
+      "claim": "استلم المحادثة",
+      "release": "حرّر المحادثة",
+      "switch_to_human": "حوّل المحادثة إلى موظف",
+      "return_to_bot": "أعاد المحادثة إلى البوت",
+      "close": "أغلق المحادثة",
+      "reopen": "أعاد فتح المحادثة",
+      "send_template": "أرسل قالباً",
+      "agent_reply": "أرسل رداً",
+      "send_attachment": "أرسل مرفقاً",
+      "send_location": "أرسل موقعاً",
+      "send_contact": "أرسل جهة اتصال",
+      "send_reaction": "أضاف تفاعلاً",
+      "remove_reaction": "أزال تفاعلاً",
+      "phone_number_changed": "تغيّر رقم العميل"
+    }
   }
 }

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, ArrowLeft, Users as UsersIcon, LogOut, Plus } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Users as UsersIcon, LogOut, Plus, Bell, BellOff, History } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { translateApiError } from '../utils/apiError';
+import { useNotifications } from '../hooks/useNotifications';
+import { usePushSubscription } from '../hooks/usePushSubscription';
 import ConversationListItem from '../components/ConversationListItem';
 import MessageBubble from '../components/MessageBubble';
 import Composer from '../components/Composer';
@@ -15,6 +17,8 @@ import NewConversationModal from '../components/NewConversationModal';
 import Lightbox from '../components/Lightbox';
 import ThemeToggle from '../components/ThemeToggle';
 import LanguageToggle from '../components/LanguageToggle';
+import ActivityTimeline from '../components/ActivityTimeline';
+import Dialog from '../components/ui/Dialog';
 import Button from '../components/ui/Button';
 import { formatCountdown, formatDateSeparator, isSameDay } from '../utils/format';
 
@@ -56,10 +60,19 @@ export default function Dashboard() {
   const [showNewConversation, setShowNewConversation] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [replyTo, setReplyTo] = useState(null);
+  const [showActivity, setShowActivity] = useState(false);
+  const [activityItems, setActivityItems] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState('');
+
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const busyRef = useRef(false);
   const messagesEndRef = useRef(null);
   const hiddenRef = useRef(document.hidden);
+
+  const notifications = useNotifications({ userId: user?.id, onOpenConversation: setSelectedId });
+  const pushSubscription = usePushSubscription();
 
   const loadConversations = useCallback(async (silent) => {
     if (!silent) setListLoading(true);
@@ -67,6 +80,7 @@ export default function Dashboard() {
       const params = { ...TAB_PARAMS[tab], search: search || undefined, pageSize: 50 };
       const data = await api.listConversations(params);
       setConversations(data.rows || []);
+      notifications.processPoll(data.rows || []);
       setListError('');
     } catch (err) {
       setListError(translateApiError(err, t));
@@ -125,6 +139,31 @@ export default function Dashboard() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [detail?.messages?.length]);
 
+  // Opened from a notification click (?conversation=<id> — used by the
+  // service worker's openWindow() fallback when no dashboard tab is open).
+  useEffect(() => {
+    const convId = searchParams.get('conversation');
+    if (convId) {
+      setSelectedId(convId);
+      const next = new URLSearchParams(searchParams);
+      next.delete('conversation');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Opened from a notification click while a dashboard tab was already open
+  // (the service worker focuses it and postMessages the conversation id).
+  useEffect(() => {
+    function onMessage(event) {
+      if (event.data?.type === 'OPEN_CONVERSATION' && event.data.conversationId) {
+        setSelectedId(event.data.conversationId);
+      }
+    }
+    navigator.serviceWorker?.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker?.removeEventListener('message', onMessage);
+  }, []);
+
   async function handleSelect(conv) {
     setSelectedId(conv.id);
     setReplyTo(null);
@@ -135,6 +174,20 @@ export default function Dashboard() {
       } catch {
         // non-critical
       }
+    }
+  }
+
+  async function openActivity() {
+    setShowActivity(true);
+    setActivityLoading(true);
+    setActivityError('');
+    try {
+      const data = await api.getConversationActivity(selectedId);
+      setActivityItems(data.activity || []);
+    } catch (err) {
+      setActivityError(translateApiError(err, t));
+    } finally {
+      setActivityLoading(false);
     }
   }
 
@@ -241,8 +294,26 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const next = !notifications.muted;
+                notifications.setMuted(next);
+                if (!next && pushSubscription.supported && !pushSubscription.subscribed) pushSubscription.subscribe();
+              }}
+              aria-label={notifications.muted ? t('notifications.unmute') : t('notifications.mute')}
+              title={notifications.permission === 'denied' ? t('notifications.permissionDenied') : undefined}
+            >
+              {notifications.muted ? <BellOff size={14} /> : <Bell size={14} />}
+            </Button>
             <ThemeToggle />
             <LanguageToggle />
+            {user?.role === 'admin' && (
+              <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/activity')} aria-label={t('activity.globalTitle')}>
+                <History size={14} />
+              </Button>
+            )}
             {user?.role === 'admin' && (
               <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/users')} aria-label={t('nav.users')}>
                 <UsersIcon size={14} />
@@ -319,6 +390,9 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-1.5">
+                <Button size="sm" variant="ghost" onClick={openActivity} aria-label={t('activity.conversationTitle')}>
+                  <History size={14} />
+                </Button>
                 {!conversation.assigned_to ? (
                   <Button size="sm" disabled={actionBusy} onClick={() => withAction(() => api.claim(conversation.id))}>
                     {t('conversation.actions.claim')}
@@ -423,6 +497,10 @@ export default function Dashboard() {
       />
 
       <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+
+      <Dialog open={showActivity} onOpenChange={setShowActivity} title={t('activity.conversationTitle')}>
+        <ActivityTimeline items={activityItems} loading={activityLoading} error={activityError} />
+      </Dialog>
     </div>
   );
 }
