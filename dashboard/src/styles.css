@@ -532,11 +532,122 @@ select {
   max-width: 380px;
   width: 100%;
 }
+.modal-card--wide {
+  max-width: 620px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.modal-card__header h3 {
+  margin: 0;
+}
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+}
+
+/* ─── New conversation ────────────────────────────────────────────────────── */
+.sidebar__new-conv {
+  padding: 10px 14px 0;
+}
+.new-conv-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.new-conv-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.template-picker {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 10px;
+}
+.template-picker__filters {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr auto;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.template-picker__filters input,
+.template-picker__filters select {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.template-list {
+  max-height: 160px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.template-list__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  border-radius: 8px;
+  padding: 8px 10px;
+  text-align: start;
+  font-size: 13px;
+}
+.template-list__item--active {
+  border-color: var(--color-brand);
+  background: var(--color-brand-light);
+}
+.template-list__name {
+  flex: 1;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.template-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.field-group input {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-weight: 400;
+  color: var(--color-text);
+}
+.template-preview__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+@media (max-width: 640px) {
+  .new-conv-form__grid,
+  .template-picker__filters {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ─── Responsive ──────────────────────────────────────────────────────────── */

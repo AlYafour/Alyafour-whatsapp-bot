@@ -10,7 +10,12 @@ export default function MessageBubble({ message }) {
   return (
     <div className={`bubble-row ${isOutbound ? 'bubble-row--out' : 'bubble-row--in'}`}>
       <div className={`bubble bubble--${message.sender_type}`}>
-        {senderLabel && <div className="bubble__sender">{senderLabel}</div>}
+        {senderLabel && (
+          <div className="bubble__sender">
+            {senderLabel}
+            {message.message_type === 'template' && ' · قالب'}
+          </div>
+        )}
         <div className="bubble__text">{body}</div>
         <div className="bubble__meta">
           <span>{formatClock(message.created_at)}</span>

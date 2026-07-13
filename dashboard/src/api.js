@@ -1,6 +1,6 @@
 const BASE = '/api/admin';
 
-async function request(path, { method = 'GET', body, params } = {}) {
+async function request(path, { method = 'GET', body, params, headers } = {}) {
   let url = `${BASE}${path}`;
   if (params) {
     const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '');
@@ -11,7 +11,10 @@ async function request(path, { method = 'GET', body, params } = {}) {
   const res = await fetch(url, {
     method,
     credentials: 'include',
-    headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+    headers: {
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : undefined),
+      ...headers,
+    },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
@@ -52,4 +55,12 @@ export const api = {
   listUsers: () => request('/users'),
   createUser: (payload) => request('/users', { method: 'POST', body: payload }),
   updateUser: (id, payload) => request(`/users/${id}`, { method: 'PATCH', body: payload }),
+
+  listTemplates: (refresh) => request('/templates', { params: refresh ? { refresh: '1' } : undefined }),
+  startConversation: (payload, idempotencyKey) =>
+    request('/conversations/new', {
+      method: 'POST',
+      body: payload,
+      headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+    }),
 };

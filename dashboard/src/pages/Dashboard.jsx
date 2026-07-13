@@ -7,6 +7,7 @@ import MessageBubble from '../components/MessageBubble';
 import Composer from '../components/Composer';
 import Filters from '../components/Filters';
 import ConfirmDialog from '../components/ConfirmDialog';
+import NewConversationModal from '../components/NewConversationModal';
 import { formatCountdown, MODE_LABEL, STATUS_LABEL } from '../utils/format';
 
 const POLL_MS = 3000;
@@ -36,6 +37,7 @@ export default function Dashboard() {
   const [detailError, setDetailError] = useState('');
   const [actionBusy, setActionBusy] = useState(false);
   const [confirmReturnToBot, setConfirmReturnToBot] = useState(false);
+  const [showNewConversation, setShowNewConversation] = useState(false);
 
   const busyRef = useRef(false);
   const messagesEndRef = useRef(null);
@@ -132,8 +134,9 @@ export default function Dashboard() {
   let composerDisabledReason = null;
   if (conversation?.status === 'closed') composerDisabledReason = 'المحادثة مغلقة — أعد فتحها لإرسال رد';
   else if (detail?.serviceWindow && !detail.serviceWindow.open) {
-    composerDisabledReason =
-      'انتهت نافذة الـ 24 ساعة لهذه المحادثة (TEMPLATE_REQUIRED). يلزم إرسال قالب رسالة معتمد من Meta لإعادة فتح المحادثة قبل إمكانية الرد الحر.';
+    composerDisabledReason = conversation?.last_customer_message_at
+      ? 'انتهت نافذة الـ 24 ساعة لهذه المحادثة (TEMPLATE_REQUIRED). يلزم إرسال قالب رسالة معتمد من Meta لإعادة فتح المحادثة قبل إمكانية الرد الحر.'
+      : 'بانتظار رد العميل. لا يمكن إرسال رسالة نصية عادية خارج نافذة 24 ساعة.';
   }
 
   return (
@@ -154,6 +157,12 @@ export default function Dashboard() {
               خروج
             </button>
           </div>
+        </div>
+
+        <div className="sidebar__new-conv">
+          <button type="button" className="btn btn--primary btn--block" onClick={() => setShowNewConversation(true)}>
+            + محادثة جديدة
+          </button>
         </div>
 
         <Filters active={tab} onChange={setTab} search={search} onSearchChange={setSearch} />
@@ -254,6 +263,17 @@ export default function Dashboard() {
           withAction(() => api.returnToBot(conversation.id));
         }}
       />
+
+      {showNewConversation && (
+        <NewConversationModal
+          onClose={() => setShowNewConversation(false)}
+          onCreated={async (conv) => {
+            setShowNewConversation(false);
+            await loadConversations(true);
+            setSelectedId(conv.id);
+          }}
+        />
+      )}
     </div>
   );
 }
