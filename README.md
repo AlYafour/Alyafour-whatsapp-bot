@@ -29,7 +29,7 @@ the bot and reply manually through the same WhatsApp number.
 ### Rich media (images, video, audio/voice, documents, stickers, location, contacts, reactions, interactive replies)
 
 - `lib/mediaLimits.js` — the *current* official Cloud API allowlist/size limits per type (verified against `developers.facebook.com/docs/whatsapp/cloud-api/reference/media` while building this — image 5MB JPEG/PNG, video 16MB MP4/3GPP, audio/voice 16MB AAC/MP4/MPEG/AMR/OGG-Opus, document 100MB, sticker 100KB static/500KB animated WEBP), plus a magic-byte `sniffMimeType()` so uploads are validated against actual file content, not just filename/declared type.
-- `lib/storage.js` — thin Vercel Blob (`@vercel/blob`) wrapper; swap providers by editing this one file.
+- `lib/storage.js` — thin Vercel Blob (`@vercel/blob`) wrapper; swap providers by editing this one file. Authenticates via Vercel OIDC (`BLOB_STORE_ID` + `VERCEL_OIDC_TOKEN`, auto-populated on Vercel once the store is connected to the project) by default, and only falls back to the static `BLOB_READ_WRITE_TOKEN` when those aren't present — i.e. local development. `BLOB_READ_WRITE_TOKEN` is never required on Vercel. See `tests/storage.test.js` for the exact precedence.
 - `lib/mediaDownload.js` — fetches Meta's short-lived, Bearer-token-gated media URL and downloads the bytes server-side (`WHATSAPP_ACCESS_TOKEN` never reaches the browser).
 - **Lazy download, not eager**: `api/webhook.js` only ever persists *metadata* (`media_id`, `mime_type`, `caption`, `filename`, `media_status: 'pending'`) — it never downloads or blocks the webhook's `200` response on a slow Meta/storage round trip. The actual download + Vercel Blob upload happens on first authenticated view, in `GET /api/admin/media/:messageId`, which then flips `media_status` to `stored` (cached for every later request) or `failed` (returns a retriable `502 MEDIA_DOWNLOAD_FAILED`).
 - `api/admin/media/[messageId].js` — verifies the session, streams the file with correct `Content-Type`/`Content-Disposition` (`inline` for image/video/audio/voice/sticker, `attachment` otherwise), never exposes the Meta or Blob URL to the client.
@@ -98,7 +98,9 @@ npm run dev:dashboard  # serves the dashboard on :5173 with hot reload
    ```
 
    This runs every `*.sql` file in `migrations/` against `DATABASE_URL` in order (`001_init.sql` → `002_template_messages.sql` → `003_wa_id_history.sql` → `004_rich_media.sql` → `005_push_subscriptions.sql`). It's safe to re-run — every statement uses `IF NOT EXISTS` / `DROP ... IF EXISTS` first, and none of them delete existing data.
-3. Create a Vercel Blob store (Vercel dashboard → your project → **Storage** → **Create Database** → **Blob**) and copy the generated read/write token into `BLOB_READ_WRITE_TOKEN`. This backs the media proxy described below — without it, inbound/outbound media can't be archived (text, templates, location, and contacts still work fine).
+3. Create a Vercel Blob store (Vercel dashboard → your project → **Storage** → **Create Database** → **Blob**). This backs the media proxy described below — without it, inbound/outbound media can't be archived (text, templates, location, and contacts still work fine).
+   - **On Vercel (recommended):** go to the Blob store's **Projects** tab → **Connect to Project** → select this project and its environments. Vercel then auto-populates `BLOB_STORE_ID` and `VERCEL_OIDC_TOKEN` on every deployment — `lib/storage.js` uses these short-lived, auto-rotated OIDC credentials by default. **You do not need to set `BLOB_READ_WRITE_TOKEN` on Vercel.**
+   - **For local development:** copy the store's read-write token into `BLOB_READ_WRITE_TOKEN` (or run `vercel env pull`, which fetches this variable). `lib/storage.js` only falls back to it when the OIDC variables above aren't present.
 4. *(Optional, for Web Push)* Generate VAPID keys and add them to your environment:
    ```bash
    npx web-push generate-vapid-keys
@@ -126,7 +128,8 @@ npm run create-admin -- --name "Admin" --email "admin@example.com" --password "c
 | `ANTHROPIC_API_KEY` | Claude API key for AI replies |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Temporary bot session state |
 | `DATABASE_URL` | Neon Postgres connection string — permanent conversations/messages |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob token — stores archived media referenced by `messages.storage_key`/`storage_url` |
+| `BLOB_STORE_ID` / `VERCEL_OIDC_TOKEN` | Vercel Blob auth via OIDC — **auto-populated by Vercel** once the Blob store is connected to the project; do not set manually. Preferred in production. |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob static token — **local development fallback only**, used when the OIDC variables above aren't present. Not required on Vercel. |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | *(Optional)* Web Push — `npx web-push generate-vapid-keys`. Leave unset to skip; every other notification channel still works. |
 | `AUTH_SECRET` | JWT signing secret for the dashboard (`openssl rand -base64 48`) |
 | `APP_URL` | Public URL of the deployment (used in docs/links) |
@@ -221,7 +224,7 @@ The suite fakes `lib/db.js`, `lib/metaGraph.js`, `lib/whatsappApi.js`, `lib/idem
 - `api/admin/media/[messageId].js`
 - `api/admin/conversations/[id]/attachments.js`, `location.js`, `contact.js`, `react.js`, `activity.js`
 - `api/admin/activity.js`, `api/admin/push/subscribe.js`, `unsubscribe.js`, `vapid-public-key.js`
-- `tests/` — `helpers/fakeDb.js`, `helpers/fakeModule.js`, `phone.test.js`, `mediaLimits.test.js`, `templateService.test.js`, `auth.test.js`, `webhook.test.js`, `adminEndpoints.test.js`, `mediaEndpoint.test.js`, `webPush.test.js`, `activity.test.js`
+- `tests/` — `helpers/fakeDb.js`, `helpers/fakeModule.js`, `phone.test.js`, `mediaLimits.test.js`, `templateService.test.js`, `auth.test.js`, `webhook.test.js`, `adminEndpoints.test.js`, `mediaEndpoint.test.js`, `webPush.test.js`, `activity.test.js`, `storage.test.js`
 
 **Created — dashboard:**
 - `src/i18n.js`, `src/locales/ar.json`, `src/locales/en.json`
@@ -238,7 +241,8 @@ Rewritten in place (same filename, new implementation): `dashboard/src/{App,api,
 
 ## 10. Security notes
 
-- `WHATSAPP_ACCESS_TOKEN`, `DATABASE_URL`, `AUTH_SECRET`, `ANTHROPIC_API_KEY`, and `BLOB_READ_WRITE_TOKEN` are only read server-side (`api/**`, `lib/**`); nothing in `dashboard/src` references `process.env` for secrets — the dashboard only ever calls same-origin `/api/admin/*` endpoints with `credentials: 'include'`.
+- `WHATSAPP_ACCESS_TOKEN`, `DATABASE_URL`, `AUTH_SECRET`, `ANTHROPIC_API_KEY`, and the Blob credentials (`VERCEL_OIDC_TOKEN`/`BLOB_READ_WRITE_TOKEN`) are only read server-side (`api/**`, `lib/**`); nothing in `dashboard/src` references `process.env` for secrets — the dashboard only ever calls same-origin `/api/admin/*` endpoints with `credentials: 'include'`.
+- Vercel Blob auth prefers short-lived, auto-rotated OIDC credentials (`BLOB_STORE_ID` + `VERCEL_OIDC_TOKEN`) over the long-lived static `BLOB_READ_WRITE_TOKEN`, which is now only a local-development fallback — see `lib/storage.js` and `tests/storage.test.js`.
 - Media is never served from a public Meta or Blob URL directly — every file goes through the authenticated `GET /api/admin/media/:messageId` proxy, which re-checks the session on every request.
 - Uploaded/downloaded media is validated against the *actual file bytes* (`lib/mediaLimits.js#sniffMimeType()`), not just the declared `Content-Type` or filename, and rejected outside Meta's official per-type size limits.
 - Auth cookie is `httpOnly`, `sameSite: lax`, and `secure` in production; every `/api/admin/*` route re-checks the user is still `active` on every request.
