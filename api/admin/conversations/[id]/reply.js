@@ -14,6 +14,7 @@ module.exports = withAuth(async (req, res) => {
 
   const text = sanitizeText(req.body?.text, MAX_MESSAGE_LEN);
   if (!text) return res.status(400).json({ error: 'Message text is required' });
+  const contextMessageWaId = sanitizeText(req.body?.contextMessageWaId, 128) || null;
 
   try {
     const conversation = await getConversationById(id);
@@ -39,6 +40,7 @@ module.exports = withAuth(async (req, res) => {
       senderType: 'agent',
       sentBy: req.user.id,
       resetUnread: true,
+      contextMessageWaId,
     });
 
     if (error) {
