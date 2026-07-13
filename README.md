@@ -15,7 +15,7 @@ the bot and reply manually through the same WhatsApp number.
   - `userService.js` — admin_users CRUD.
 - `api/admin/**` — authenticated dashboard API (login/logout/me, conversations, users, templates, new-conversation).
 - `dashboard/` — Arabic-first React/Vite PWA (login, conversation inbox, user management, new-conversation modal).
-- `migrations/001_init.sql` — Postgres schema. `002_template_messages.sql` — `template` messages. `003_wa_id_history.sql` — number-change history. `004_rich_media.sql` — image/video/audio/voice/document/sticker/location/contacts/reaction/interactive/system columns. All additive/production-safe.
+- `migrations/001_init.sql` — Postgres schema. `002_template_messages.sql` — `template` messages. `003_wa_id_history.sql` — number-change history. `004_rich_media.sql` — image/video/audio/voice/document/sticker/location/contacts/reaction/interactive/system columns. `005_push_subscriptions.sql` — Web Push subscriptions. All additive/production-safe.
 - `scripts/create-admin.js`, `scripts/migrate.js` — CLI tooling.
 - `tests/` — `node --test` backend suite (system events, media validation, auth, 24h window). `dashboard/tests/i18n.test.js` — Arabic/English translation-key parity.
 
@@ -51,6 +51,22 @@ the bot and reply manually through the same WhatsApp number.
 - `GET /api/admin/templates` — list approved templates (any authenticated admin/agent).
 - `POST /api/admin/conversations/new` — validates phone + template + variables, sends the template, upserts the conversation (`mode: human`, `status: pending`, assigned to the sender), logs the outbound `template` message, and audit-logs the action.
 
+### Notifications
+
+- **Sound**: a short two-tone chime synthesized with the Web Audio API (no binary asset, works offline) plays for each genuinely new inbound customer message. It's driven by `dashboard/src/utils/notifications.js#detectNewInboundActivity()`, which diffs two consecutive conversation-list polls by `unread_count` — a duplicate poll (identical `unread_count`) never re-fires it, and it never fires for outbound messages or on the very first load of a session (so pre-existing unread doesn't cause a burst of chimes). Respects the browser's autoplay policy (the `AudioContext` unlocks on the first click/keydown and the chime silently no-ops if it's still suspended).
+- **Mute**: a bell icon in the sidebar header, persisted per logged-in user (`localStorage`, keyed by user id) — muting suppresses the chime and desktop/push notifications, never the unread badges/tab title.
+- **Tab title**: shows `(N) …` for the total unread count across all conversations, restored on unmount.
+- **Desktop notifications**: `Notification` permission is requested once on first dashboard load; a granted permission shows the customer's name and a length-capped, plain-text preview (Notification bodies are never HTML-parsed, so this is about noise, not XSS) for each new inbound message. Clicking it focuses the tab and opens the right conversation.
+- **Web Push** (optional, only while `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` are set — see `.env.example`): lets a notification reach an employee even with the dashboard tab closed. `dashboard/src/hooks/usePushSubscription.js` subscribes via the service worker (`dashboard/public/sw.js` handles the `push` and `notificationclick` events — the latter focuses an existing tab and postMessages the conversation id, or opens `/dashboard?conversation=<id>` if none is open); `api/webhook.js` triggers it (fire-and-forget) whenever a message lands on a human-owned conversation, or when a handoff is newly created — targeted at the assigned agent, or broadcast to every active admin/agent if unclaimed. `lib/webPush.js` prunes subscriptions Meta/the browser reports as expired (HTTP 410) and is a complete no-op (verified in `tests/webPush.test.js`) if VAPID isn't configured, so a deployment without it behaves exactly as before.
+
+### Employee accountability
+
+- Every agent-sent message shows the actual employee's name (not just "Agent") and its exact timestamp on hover — `lib/conversationService.js#listMessages()` now joins `sent_by` against `admin_users.name`.
+- Claim/release/switch-to-human/return-to-bot/close/reopen were already audit-logged (`audit_logs`, existing schema) — this update exposes them:
+  - `GET /api/admin/conversations/:id/activity` — per-conversation timeline, viewable by any authenticated admin/agent (same access as the conversation itself).
+  - `GET /api/admin/activity` — a global, cross-employee feed, **admin-only** (agents keep exactly the permissions the existing role system already granted them); filterable by `userId`/`action`, paginated.
+- `dashboard/src/components/ActivityTimeline.jsx` renders both (a dialog on the conversation header, and a dedicated `/dashboard/activity` admin page linked from the sidebar).
+
 Upstash Redis keeps the *temporary* bot session (language, menu step, AI
 history). Neon Postgres is the *permanent* store for conversations, messages
 and admin users. The webhook always writes to Neon before running any bot
@@ -81,8 +97,13 @@ npm run dev:dashboard  # serves the dashboard on :5173 with hot reload
    npm run migrate
    ```
 
-   This runs every `*.sql` file in `migrations/` against `DATABASE_URL` in order (`001_init.sql` → `002_template_messages.sql` → `003_wa_id_history.sql` → `004_rich_media.sql`). It's safe to re-run — every statement uses `IF NOT EXISTS` / `DROP ... IF EXISTS` first, and none of them delete existing data.
+   This runs every `*.sql` file in `migrations/` against `DATABASE_URL` in order (`001_init.sql` → `002_template_messages.sql` → `003_wa_id_history.sql` → `004_rich_media.sql` → `005_push_subscriptions.sql`). It's safe to re-run — every statement uses `IF NOT EXISTS` / `DROP ... IF EXISTS` first, and none of them delete existing data.
 3. Create a Vercel Blob store (Vercel dashboard → your project → **Storage** → **Create Database** → **Blob**) and copy the generated read/write token into `BLOB_READ_WRITE_TOKEN`. This backs the media proxy described below — without it, inbound/outbound media can't be archived (text, templates, location, and contacts still work fine).
+4. *(Optional, for Web Push)* Generate VAPID keys and add them to your environment:
+   ```bash
+   npx web-push generate-vapid-keys
+   ```
+   Copy the output into `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` (and set `VAPID_SUBJECT` to a `mailto:` address you control). Leave these unset to skip Web Push — every other notification channel (sound, tab title, desktop `Notification` while a tab is open) works without them.
 
 ## 3. Create the first admin user
 
@@ -106,6 +127,7 @@ npm run create-admin -- --name "Admin" --email "admin@example.com" --password "c
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Temporary bot session state |
 | `DATABASE_URL` | Neon Postgres connection string — permanent conversations/messages |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob token — stores archived media referenced by `messages.storage_key`/`storage_url` |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | *(Optional)* Web Push — `npx web-push generate-vapid-keys`. Leave unset to skip; every other notification channel still works. |
 | `AUTH_SECRET` | JWT signing secret for the dashboard (`openssl rand -base64 48`) |
 | `APP_URL` | Public URL of the deployment (used in docs/links) |
 
@@ -159,6 +181,17 @@ See `.env.example` for the full annotated list.
 8. Record a voice note (mic icon) on Firefox or Safari — it sends directly as a compatible format. On Chrome/Edge it attempts an in-browser conversion first; if that fails, "Send" stays disabled with a clear explanation instead of uploading a broken file.
 9. `npm test` (run from the repo root) — all backend + translation-parity tests pass with zero failures.
 
+### Notifications & accountability walkthrough
+
+1. Open the dashboard in two browser profiles logged in as two different agents. Have a customer message a conversation claimed by neither — both agents hear the chime and (if `Notification` permission was granted) see a desktop notification with the customer's name; clicking it opens that exact conversation.
+2. Leave the dashboard idle on the same conversation — the polling loop refetches every 3s but the chime **does not** repeat for a poll that returns the same `unread_count` (no duplicate notification for duplicate data).
+3. Mute notifications (bell icon) — send another customer message — no chime, no desktop notification; the unread badge and tab title `(N) …` still update.
+4. Refresh the page — no chime fires for the pre-existing unread conversations already in the list (only genuinely new activity after the page has loaded triggers a sound).
+5. Send a reply as Agent A — open the same conversation as Agent B (or scroll back) — the message shows "Agent A" (not just "Agent") and its exact time on hover.
+6. Claim, release, switch-to-human, close, and reopen a conversation — click the clock/history icon in its header — every action appears in the timeline with the correct actor and relative time.
+7. As an agent, try `GET /api/admin/activity` directly — `403`. As an admin, the same request returns `200` with every employee's activity, filterable by `?userId=`/`?action=`.
+8. *(If VAPID is configured)* Close the dashboard tab entirely and have a customer message a claimed conversation — a system-level push notification still arrives; clicking it opens (or focuses) the dashboard at that conversation.
+
 ## 7. Redesign & localization
 
 - Tailwind CSS v4 (`@tailwindcss/vite`) drives all new styling via CSS-variable design tokens in `dashboard/src/styles.css` (`--color-brand`, `--color-surface`, etc.), redefined per `[data-theme="dark"]` — light/dark/system, persisted in `localStorage`, toggled from the header (`ThemeToggle`).
@@ -171,31 +204,35 @@ See `.env.example` for the full annotated list.
 ## 8. Testing
 
 ```bash
-npm test          # node --test — backend + i18n-parity suite, ~40 tests, no network/DB required
+npm test          # node --test — backend + dashboard suite, ~55 tests, no network/DB required
 npm run build     # installs + builds the dashboard (also part of `vercel build`)
 ```
 
-The suite fakes `lib/db.js`, `lib/metaGraph.js`, `lib/whatsappApi.js`, `lib/idempotency.js`, and `lib/mediaDownload.js` via Node's `require.cache` (see `tests/helpers/`) — no real Neon/Upstash/Meta credentials are needed to run it.
+The suite fakes `lib/db.js`, `lib/metaGraph.js`, `lib/whatsappApi.js`, `lib/idempotency.js`, `lib/mediaDownload.js`, `lib/pushSubscriptionService.js`, and the `web-push` npm package itself via Node's `require.cache` (see `tests/helpers/`) — no real Neon/Upstash/Meta/VAPID credentials are needed to run it. Coverage added this round: `tests/webPush.test.js` (no-ops without VAPID, sends/prunes/broadcasts with it), `tests/activity.test.js` (per-conversation timeline content + actor names, global feed's admin-only `403`/`200`, action filtering, and `sent_by_name` on messages), and `dashboard/tests/notifications.test.js` (the poll-diffing dedup logic — new/increased/identical/decreased `unread_count`).
 
 ## 9. Modified / created files
 
-**Modified:** `api/webhook.js` (system events + full rich-media classification), `lib/conversationService.js` (phone-change transaction, media/system/reaction fields), `lib/rateLimiter.js`, `lib/whatsappApi.js` (contextual replies), `lib/messagingService.js`, `lib/db.js` (`transaction()`), `api/admin/conversations/[id]/reply.js`, `package.json`, `vercel.json`, `.env.example`, `.gitignore`, `README.md`, and the full `dashboard/src/**` (redesign — see below).
+**Modified:** `api/webhook.js` (system events + full rich-media classification + push trigger), `lib/conversationService.js` (phone-change transaction, media/system/reaction fields, `sent_by_name` join, activity queries), `lib/rateLimiter.js`, `lib/whatsappApi.js` (contextual replies), `lib/messagingService.js`, `lib/db.js` (`transaction()`), `api/admin/conversations/[id]/reply.js`, `package.json`, `vercel.json`, `.env.example`, `.gitignore`, `README.md`, and the full `dashboard/src/**` (redesign — see below).
 
 **Created — backend:**
-- `migrations/003_wa_id_history.sql`, `migrations/004_rich_media.sql`
+- `migrations/003_wa_id_history.sql`, `migrations/004_rich_media.sql`, `migrations/005_push_subscriptions.sql`
 - `lib/mediaLimits.js`, `lib/storage.js`, `lib/mediaDownload.js`, `lib/whatsappMedia.js`, `lib/rawBody.js`
+- `lib/webPush.js`, `lib/pushSubscriptionService.js`
 - `api/admin/media/[messageId].js`
-- `api/admin/conversations/[id]/attachments.js`, `location.js`, `contact.js`, `react.js`
-- `tests/` — `helpers/fakeDb.js`, `helpers/fakeModule.js`, `phone.test.js`, `mediaLimits.test.js`, `templateService.test.js`, `auth.test.js`, `webhook.test.js`, `adminEndpoints.test.js`, `mediaEndpoint.test.js`
+- `api/admin/conversations/[id]/attachments.js`, `location.js`, `contact.js`, `react.js`, `activity.js`
+- `api/admin/activity.js`, `api/admin/push/subscribe.js`, `unsubscribe.js`, `vapid-public-key.js`
+- `tests/` — `helpers/fakeDb.js`, `helpers/fakeModule.js`, `phone.test.js`, `mediaLimits.test.js`, `templateService.test.js`, `auth.test.js`, `webhook.test.js`, `adminEndpoints.test.js`, `mediaEndpoint.test.js`, `webPush.test.js`, `activity.test.js`
 
 **Created — dashboard:**
 - `src/i18n.js`, `src/locales/ar.json`, `src/locales/en.json`
 - `src/contexts/ThemeContext.jsx`, `src/contexts/ToastContext.jsx`
 - `src/components/ui/Button.jsx`, `Dialog.jsx`, `DropdownMenu.jsx`, `Tooltip.jsx`
-- `src/components/ThemeToggle.jsx`, `LanguageToggle.jsx`, `AudioPlayer.jsx`, `VoiceRecorder.jsx`, `LocationPicker.jsx`, `ContactPicker.jsx`, `Lightbox.jsx`
-- `src/hooks/useVoiceRecorder.js`
-- `src/utils/apiError.js`
-- `tests/i18n.test.js`
+- `src/components/ThemeToggle.jsx`, `LanguageToggle.jsx`, `AudioPlayer.jsx`, `VoiceRecorder.jsx`, `LocationPicker.jsx`, `ContactPicker.jsx`, `Lightbox.jsx`, `ActivityTimeline.jsx`
+- `src/hooks/useVoiceRecorder.js`, `useNotifications.js`, `useNotificationSound.js`, `usePushSubscription.js`
+- `src/utils/apiError.js`, `utils/notifications.js`
+- `src/pages/Activity.jsx`
+- `tests/i18n.test.js`, `tests/notifications.test.js`
+- `public/sw.js` gained `push`/`notificationclick` handlers (same file, additive)
 
 Rewritten in place (same filename, new implementation): `dashboard/src/{App,api,styles}.{jsx,js,css}`, `pages/{Login,Dashboard,Users}.jsx`, `components/{Filters,ConversationListItem,MessageBubble,Composer,ConfirmDialog,NewConversationModal}.jsx`, `utils/format.js`.
 
@@ -210,6 +247,9 @@ Rewritten in place (same filename, new implementation): `dashboard/src/{App,api,
 - `POST /api/admin/conversations/new` never sends to the business's own WhatsApp number (checked via `getOwnPhoneNumber()`); every send endpoint validates the 24-hour service window server-side — the frontend check is a UX convenience, not the security boundary.
 - All SQL is parameterized (tagged templates / `$1, $2, …`) — no string-concatenated queries, including the new phone-change transaction.
 - Filenames are sanitized before being reflected in `Content-Disposition`; nothing derived from user input is used to build a filesystem path (media is addressed by UUID `messageId` + Blob storage key, not by filename).
+- `GET /api/admin/activity` (the cross-employee feed) is gated `{ roles: ['admin'] }` at the `withAuth()` layer — agents get `403`, not a filtered/redacted response, so there's no risk of a client-side filter being the only thing standing between an agent and other employees' full activity.
+- Push subscriptions store only the browser-issued `endpoint`/`p256dh`/`auth` (no customer data); `VAPID_PRIVATE_KEY` is read exclusively server-side by `lib/webPush.js` and never appears in any API response — the frontend only ever receives the public key from `GET /api/admin/push/vapid-public-key`.
+- Notification bodies (desktop `Notification` and Web Push alike) carry only the customer's name/number and a truncated message preview — never media URLs, tokens, or other employees' data.
 
 ## 11. Known limitations
 
@@ -218,3 +258,6 @@ Rewritten in place (same filename, new implementation): `dashboard/src/{App,api,
 - Sending stickers from the dashboard requires the agent to already have a valid `.webp` sticker file; there's no in-app sticker creation/picker (out of scope — Meta doesn't expose one via the Cloud API either).
 - The main dashboard JS bundle is ~525 kB minified / ~168 kB gzipped (Radix + i18next + motion + lucide-react); acceptable for an internal tool, but a candidate for route-level code-splitting if it grows further.
 - `npm audit` reports a moderate/high advisory in `esbuild`'s Vite-dev-server-only code path (pre-existing, not present in production builds); no fix is available yet that isn't a breaking Vite major-version bump.
+- Web Push (`VAPID_*`) was verified end-to-end at the API layer (subscribe/unsubscribe, send, prune-on-410, graceful no-op — see `tests/webPush.test.js`) but the browser-side subscribe flow and the service worker's `push`/`notificationclick` handlers were not exercised in a live browser this session; QA the full round trip (subscribe → close tab → trigger → click) before depending on it in production. In-app sound, tab title, and desktop `Notification` (while a tab is open) don't depend on this and are fully exercised.
+- Once denied, browser `Notification` permission can't be re-prompted from JavaScript — the mute button surfaces a tooltip pointing the employee at their browser settings, but there's no in-app deep link to that settings page (none exists cross-browser).
+- The notification chime uses `AudioContext`, which some older/locked-down mobile browsers restrict further than desktop; it fails silently (no sound, no error) rather than breaking anything if unsupported.
