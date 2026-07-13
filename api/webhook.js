@@ -7,10 +7,14 @@ const { DEPARTMENTS, buildContactCard } = require('../lib/departments');
 const MENUS = require('../lib/menu');
 const {
   getOrCreateConversation,
+  getConversationByWaId,
+  handlePhoneNumberChange,
   recordInboundMessage,
   touchConversationOnInbound,
+  touchConversationOnSystemEvent,
   requestHandoff,
   updateMessageStatusByWaId,
+  logAudit,
 } = require('../lib/conversationService');
 
 // ─── Webhook verification (GET) ───────────────────────────────────────────────
@@ -30,24 +34,104 @@ function detectLanguage(text) {
   return /[؀-ۿ]/.test(text) ? 'ar' : 'en';
 }
 
-const MEDIA_TYPES = ['image', 'video', 'audio', 'document'];
+const MEDIA_TYPES = ['image', 'video', 'document'];
 
 // ─── Classify an inbound Meta message into our storage shape ──────────────────
+// Returns a superset shape; fields irrelevant to a given type are left null.
 function classifyMessage(message) {
   const type = message.type;
+  const contextMessageWaId = message.context?.id || null;
+  const base = { contextMessageWaId };
 
   if (type === 'text') {
-    return { messageType: 'text', text: message.text?.body?.trim() || null, mediaId: null };
+    return { ...base, messageType: 'text', text: message.text?.body?.trim() || null, mediaId: null };
   }
+
   if (MEDIA_TYPES.includes(type)) {
     const media = message[type] || {};
-    return { messageType: type, text: media.caption || null, mediaId: media.id || null };
+    return {
+      ...base,
+      messageType: type,
+      mediaId: media.id || null,
+      mimeType: media.mime_type || null,
+      caption: media.caption || null,
+      filename: media.filename || null,
+      mediaStatus: 'pending',
+    };
   }
+
+  if (type === 'audio') {
+    const media = message.audio || {};
+    return {
+      ...base,
+      messageType: media.voice ? 'voice' : 'audio',
+      mediaId: media.id || null,
+      mimeType: media.mime_type || null,
+      mediaStatus: 'pending',
+    };
+  }
+
+  if (type === 'sticker') {
+    const media = message.sticker || {};
+    return {
+      ...base,
+      messageType: 'sticker',
+      mediaId: media.id || null,
+      mimeType: media.mime_type || null,
+      mediaStatus: 'pending',
+    };
+  }
+
   if (type === 'location') {
     const loc = message.location || {};
-    return { messageType: 'location', text: loc.name || loc.address || null, mediaId: null };
+    return {
+      ...base,
+      messageType: 'location',
+      text: loc.name || loc.address || null,
+      latitude: loc.latitude ?? null,
+      longitude: loc.longitude ?? null,
+      locationName: loc.name || null,
+      locationAddress: loc.address || null,
+    };
   }
-  return { messageType: 'unknown', text: null, mediaId: null };
+
+  if (type === 'contacts') {
+    const contacts = message.contacts || [];
+    const firstName = contacts[0]?.name?.formatted_name || null;
+    return {
+      ...base,
+      messageType: 'contacts',
+      text: firstName,
+      contactsData: contacts,
+    };
+  }
+
+  if (type === 'reaction') {
+    const reaction = message.reaction || {};
+    return {
+      ...base,
+      messageType: 'reaction',
+      reactionEmoji: reaction.emoji || '',
+      reactedMessageWaId: reaction.message_id || null,
+    };
+  }
+
+  if (type === 'interactive') {
+    const interactive = message.interactive || {};
+    const reply = interactive[interactive.type] || {};
+    return {
+      ...base,
+      messageType: 'interactive',
+      text: reply.title || null,
+      interactiveData: interactive,
+    };
+  }
+
+  if (type === 'unsupported') {
+    return { ...base, messageType: 'unsupported' };
+  }
+
+  return { ...base, messageType: 'unknown' };
 }
 
 // ─── Handle department selection ──────────────────────────────────────────────
@@ -86,6 +170,45 @@ async function handleDeptSelection(from, key, session, conversationId) {
   return true;
 }
 
+// ─── System events (e.g. customer changed WhatsApp number) ────────────────────
+// Never triggers the bot, never counts as unread, never opens the 24h window.
+async function handleSystemMessage(message, waMessageId) {
+  const system = message.system || {};
+
+  if (system.type !== 'user_changed_number') {
+    console.log('[WH] unhandled system event type:', system.type);
+    return;
+  }
+
+  const oldWaId = message.from || null;
+  const newWaId = system.wa_id || null;
+  if (!oldWaId || !newWaId) return;
+
+  const conversation = await getConversationByWaId(oldWaId);
+  if (!conversation) return; // no prior conversation — nothing meaningful to record
+
+  // Idempotent on wa_message_id: a duplicate delivery must not re-run the
+  // rename/merge below.
+  const saved = await recordInboundMessage({
+    conversationId: conversation.id,
+    waMessageId,
+    messageType: 'system',
+    senderType: 'system',
+    systemData: { type: 'user_changed_number', oldWaId, newWaId },
+    rawPayload: message,
+  });
+  if (!saved) return;
+
+  const { merged } = await handlePhoneNumberChange({ oldWaId, newWaId });
+
+  await touchConversationOnSystemEvent(conversation.id, { preview: `📱 ${oldWaId} → ${newWaId}` });
+  await logAudit({
+    conversationId: conversation.id,
+    action: 'phone_number_changed',
+    metadata: { oldWaId, newWaId, merged },
+  });
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────────────
 module.exports = async (req, res) => {
   if (req.method === 'GET') return handleVerification(req, res);
@@ -107,12 +230,36 @@ module.exports = async (req, res) => {
     const message = value?.messages?.[0];
     if (!message) return res.status(200).json({ status: 'ok' });
 
-    const from = message.from;
     const waMessageId = message.id;
-    const { messageType, text, mediaId } = classifyMessage(message);
+
+    // ── System events never touch bot/unread/24h-window logic ────────────────
+    if (message.type === 'system') {
+      await handleSystemMessage(message, waMessageId);
+      return res.status(200).json({ status: 'ok' });
+    }
+
+    const from = message.from;
+    const {
+      messageType,
+      text,
+      mediaId,
+      mimeType,
+      caption,
+      filename,
+      mediaStatus,
+      latitude,
+      longitude,
+      locationName,
+      locationAddress,
+      contactsData,
+      reactionEmoji,
+      reactedMessageWaId,
+      interactiveData,
+      contextMessageWaId,
+    } = classifyMessage(message);
     const customerName = value?.contacts?.[0]?.profile?.name || null;
 
-    console.log('[WH] from:', from, '| type:', messageType, '| text:', text);
+    console.log('[WH] from:', from, '| type:', messageType);
 
     markAsRead(waMessageId).catch(() => {});
 
@@ -124,6 +271,19 @@ module.exports = async (req, res) => {
       messageType,
       text,
       mediaId,
+      mimeType,
+      caption,
+      filename,
+      mediaStatus,
+      latitude,
+      longitude,
+      locationName,
+      locationAddress,
+      contactsData,
+      reactionEmoji,
+      reactedMessageWaId,
+      interactiveData,
+      contextMessageWaId,
       rawPayload: message,
     });
 
@@ -132,7 +292,8 @@ module.exports = async (req, res) => {
       return res.status(200).json({ status: 'ok' });
     }
 
-    await touchConversationOnInbound(conversation.id, { text: text || `[${messageType}]`, at: new Date() });
+    const preview = text || caption || `[${messageType}]`;
+    await touchConversationOnInbound(conversation.id, { text: preview, at: new Date() });
 
     // ── Human mode: an agent owns this conversation, bot stays silent ────────
     if (conversation.mode === 'human') {
