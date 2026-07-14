@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, ArrowLeft, Plus, Bell, BellOff, History, MessageCircle, MessagesSquare } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Plus, Bell, BellOff, History, MessageCircle, MessagesSquare, Trash2 } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -56,6 +56,7 @@ export default function Dashboard() {
   const [detailError, setDetailError] = useState('');
   const [actionBusy, setActionBusy] = useState(false);
   const [confirmReturnToBot, setConfirmReturnToBot] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [showNewConversation, setShowNewConversation] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [replyTo, setReplyTo] = useState(null);
@@ -427,6 +428,18 @@ export default function Dashboard() {
                     {t('conversation.actions.reopen')}
                   </Button>
                 )}
+                {user?.role === 'admin' && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={actionBusy}
+                    onClick={() => setConfirmDelete(true)}
+                    aria-label={t('conversation.actions.delete')}
+                    className="hover:!bg-danger-soft hover:!text-danger"
+                  >
+                    <Trash2 size={14} />
+                  </Button>
+                )}
               </div>
             </header>
 
@@ -493,6 +506,29 @@ export default function Dashboard() {
         onConfirm={() => {
           setConfirmReturnToBot(false);
           withAction(() => api.returnToBot(conversation.id));
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title={t('conversation.confirmDelete.title')}
+        message={t('conversation.confirmDelete.message')}
+        confirmLabel={t('conversation.confirmDelete.confirm')}
+        cancelLabel={t('conversation.confirmDelete.cancel')}
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={async () => {
+          setConfirmDelete(false);
+          setActionBusy(true);
+          try {
+            await api.deleteConversation(selectedId);
+            setSelectedId(null);
+            setDetail(null);
+            await loadConversations(true);
+          } catch (err) {
+            toast.error(translateApiError(err, t));
+          } finally {
+            setActionBusy(false);
+          }
         }}
       />
 

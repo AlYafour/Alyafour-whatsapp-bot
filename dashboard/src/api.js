@@ -42,6 +42,7 @@ export const api = {
 
   listConversations: (params) => request('/conversations', { params }),
   getConversation: (id) => request(`/conversations/${id}`),
+  deleteConversation: (id) => request(`/conversations/${id}`, { method: 'DELETE' }),
   reply: (id, text, contextMessageWaId) =>
     request(`/conversations/${id}/reply`, { method: 'POST', body: { text, contextMessageWaId } }),
   claim: (id) => request(`/conversations/${id}/claim`, { method: 'POST' }),

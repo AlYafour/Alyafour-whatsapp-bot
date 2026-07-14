@@ -78,7 +78,14 @@
       "switchToHuman": "Switch to human",
       "returnToBot": "Return to bot",
       "close": "Close conversation",
-      "reopen": "Reopen"
+      "reopen": "Reopen",
+      "delete": "Delete conversation"
+    },
+    "confirmDelete": {
+      "title": "Delete conversation permanently",
+      "message": "The conversation, all its messages and attachments will be permanently removed. This cannot be undone. Are you sure?",
+      "confirm": "Yes, delete permanently",
+      "cancel": "Cancel"
     },
     "confirmReturnToBot": {
       "title": "Return conversation to the bot",
@@ -281,6 +288,7 @@
       "return_to_bot": "returned the conversation to the bot",
       "close": "closed the conversation",
       "reopen": "reopened the conversation",
+      "delete_conversation": "permanently deleted a conversation",
       "send_template": "sent a template",
       "agent_reply": "sent a reply",
       "send_attachment": "sent an attachment",
