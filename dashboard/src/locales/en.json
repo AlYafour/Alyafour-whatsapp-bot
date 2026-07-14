@@ -122,6 +122,8 @@
     "permissionDenied": "Could not access the microphone. Please allow access in your browser settings.",
     "unsupported": "Your browser does not support audio recording",
     "recording": "Recording",
+    "noSignal": "⚠️ The microphone is not picking up any sound — check the selected microphone in Windows settings",
+    "silentWarning": "This recording appears silent — play the preview before sending, and check the selected microphone in Windows and the browser",
     "preview": "Preview before sending"
   },
   "messageTypes": {

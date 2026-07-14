@@ -54,18 +54,26 @@ export function useVoiceRecorder() {
   const [state, setState] = useState('idle'); // idle | requesting | recording | processing | ready | error
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState('');
-  const [result, setResult] = useState(null); // { blob, mimeType, compatible }
+  const [result, setResult] = useState(null); // { blob, mimeType, compatible, silent }
+  const [level, setLevel] = useState(0); // live mic input level 0..1
 
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
   const streamRef = useRef(null);
   const timerRef = useRef(null);
   const startedAtRef = useRef(0);
+  const audioCtxRef = useRef(null);
+  const analyserRef = useRef(null);
+  const peakRef = useRef(0);
 
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     clearInterval(timerRef.current);
+    audioCtxRef.current?.close().catch(() => {});
+    audioCtxRef.current = null;
+    analyserRef.current = null;
+    setLevel(0);
   }, []);
 
   const start = useCallback(async () => {
@@ -79,8 +87,26 @@ export function useVoiceRecorder() {
 
     setState('requesting');
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
       streamRef.current = stream;
+
+      // Live input meter — lets the agent SEE that the mic is picking up
+      // sound, and lets us flag recordings that captured only silence.
+      peakRef.current = 0;
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioCtx();
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+        audioCtxRef.current = ctx;
+        analyserRef.current = analyser;
+      } catch {
+        // metering is best-effort; recording continues without it
+      }
 
       const mimeType = pickMimeType();
       if (!mimeType) {
@@ -105,8 +131,10 @@ export function useVoiceRecorder() {
           return;
         }
 
+        const silent = peakRef.current < 0.015;
+
         if (isVoiceReady(mimeType)) {
-          setResult({ blob: rawBlob, mimeType: 'audio/ogg', compatible: true });
+          setResult({ blob: rawBlob, mimeType: 'audio/ogg', compatible: true, silent });
           setState('ready');
           return;
         }
@@ -116,11 +144,11 @@ export function useVoiceRecorder() {
         setState('processing');
         try {
           const converted = await convertToOgg(rawBlob, mimeType);
-          setResult({ blob: converted, mimeType: 'audio/ogg', compatible: true });
+          setResult({ blob: converted, mimeType: 'audio/ogg', compatible: true, silent });
           setState('ready');
         } catch (err) {
           console.error('[voice recorder] conversion failed:', err);
-          setResult({ blob: rawBlob, mimeType, compatible: false });
+          setResult({ blob: rawBlob, mimeType, compatible: false, silent });
           setState('ready');
         }
       };
@@ -129,7 +157,22 @@ export function useVoiceRecorder() {
       recorder.start();
       startedAtRef.current = Date.now();
       setDuration(0);
-      timerRef.current = setInterval(() => setDuration(Math.floor((Date.now() - startedAtRef.current) / 1000)), 250);
+      timerRef.current = setInterval(() => {
+        setDuration(Math.floor((Date.now() - startedAtRef.current) / 1000));
+        const analyser = analyserRef.current;
+        if (analyser) {
+          const data = new Uint8Array(analyser.fftSize);
+          analyser.getByteTimeDomainData(data);
+          let sum = 0;
+          for (let i = 0; i < data.length; i++) {
+            const v = (data[i] - 128) / 128;
+            sum += v * v;
+          }
+          const rms = Math.sqrt(sum / data.length);
+          peakRef.current = Math.max(peakRef.current, rms);
+          setLevel(Math.min(1, rms * 4));
+        }
+      }, 150);
       setState('recording');
     } catch (err) {
       stopStream();
@@ -160,5 +203,5 @@ export function useVoiceRecorder() {
     setError('');
   }, []);
 
-  return { state, duration, error, result, start, stop, cancel, reset };
+  return { state, duration, error, result, level, start, stop, cancel, reset };
 }
