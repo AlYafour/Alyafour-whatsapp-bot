@@ -212,6 +212,19 @@ export default function MessageBubble({ message, contextMessage, reactionEmoji, 
           )}
           <ContextPreview contextMessage={contextMessage} />
           {renderBody()}
+          {isOutbound && message.status === 'failed' && (
+            <div className="mt-1.5 flex items-start gap-1.5 rounded-lg bg-danger-soft px-2.5 py-1.5 text-[11px] font-semibold text-danger">
+              <AlertTriangle size={13} className="mt-px shrink-0" />
+              <span>
+                {t('message.deliveryFailed')}
+                {message.raw_payload?.delivery_errors?.[0]?.title && (
+                  <span className="block font-normal opacity-80" dir="ltr">
+                    {message.raw_payload.delivery_errors[0].title}
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
           <div className="mt-1 flex items-center justify-end gap-1 whitespace-nowrap text-[10px] text-text-muted">
             <span title={exactTimestamp}>{formatClock(message.created_at, i18n.language)}</span>
             {StatusIcon && <StatusIcon size={13} className={message.status === 'failed' ? 'text-danger' : message.status === 'read' ? 'text-sky-500' : ''} />}

@@ -148,6 +148,7 @@
     "download": "Download",
     "openFullscreen": "View full screen",
     "mediaLoadFailed": "Could not load the file",
+    "deliveryFailed": "This message did not reach the customer",
     "mediaRetry": "Retry",
     "mediaLoading": "Loading…",
     "dateSeparatorToday": "Today",

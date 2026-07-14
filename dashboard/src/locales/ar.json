@@ -148,6 +148,7 @@
     "download": "تحميل",
     "openFullscreen": "عرض بالحجم الكامل",
     "mediaLoadFailed": "تعذر تحميل الملف",
+    "deliveryFailed": "لم تصل هذه الرسالة للعميل",
     "mediaRetry": "إعادة المحاولة",
     "mediaLoading": "جارِ التحميل…",
     "dateSeparatorToday": "اليوم",

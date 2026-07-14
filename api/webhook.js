@@ -232,7 +232,10 @@ module.exports = async (req, res) => {
     const statuses = value?.statuses;
     if (statuses?.length) {
       for (const s of statuses) {
-        updateMessageStatusByWaId(s.id, s.status).catch((e) =>
+        if (s.status === 'failed' && s.errors?.length) {
+          console.error('[WH] delivery failed:', s.id, JSON.stringify(s.errors));
+        }
+        updateMessageStatusByWaId(s.id, s.status, s.status === 'failed' ? s.errors : undefined).catch((e) =>
           console.error('[WH] status update error:', e.message)
         );
       }
