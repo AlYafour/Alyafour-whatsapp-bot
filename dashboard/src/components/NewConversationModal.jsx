@@ -23,7 +23,7 @@ function newIdempotencyKey() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-export default function NewConversationModal({ open, onClose, onCreated }) {
+export default function NewConversationModal({ open, onClose, onCreated, initialPhone = '', initialName = '' }) {
   const { t } = useTranslation();
   const [phone, setPhone] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -62,7 +62,12 @@ export default function NewConversationModal({ open, onClose, onCreated }) {
   }
 
   useEffect(() => {
-    if (open) loadTemplates(false);
+    if (open) {
+      loadTemplates(false);
+      // Prefill when opened from an expired conversation ("reopen with template").
+      if (initialPhone) setPhone(initialPhone);
+      if (initialName) setCustomerName(initialName);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 

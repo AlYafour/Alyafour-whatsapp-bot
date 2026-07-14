@@ -117,7 +117,8 @@
     "dropHere": "أفلت الملف هنا للإرفاق",
     "uploading": "جارِ الرفع… {{percent}}٪",
     "cancelUpload": "إلغاء الرفع",
-    "captionPlaceholder": "أضف تعليقاً (اختياري)…"
+    "captionPlaceholder": "أضف تعليقاً (اختياري)…",
+    "reopenWithTemplate": "إرسال قالب لإعادة الفتح"
   },
   "recorder": {
     "start": "بدء التسجيل",

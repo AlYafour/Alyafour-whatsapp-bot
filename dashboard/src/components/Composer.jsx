@@ -23,7 +23,7 @@ function newIdempotencyKey() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-export default function Composer({ disabled, disabledReason, replyTo, onCancelReply, onSendText, onSendAttachment, onSendVoice, onSendLocation, onSendContact }) {
+export default function Composer({ disabled, disabledReason, onReopenWithTemplate, replyTo, onCancelReply, onSendText, onSendAttachment, onSendVoice, onSendLocation, onSendContact }) {
   const { t } = useTranslation();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -137,8 +137,13 @@ export default function Composer({ disabled, disabledReason, replyTo, onCancelRe
   if (disabled) {
     return (
       <div className="border-t border-border bg-surface px-4 py-3">
-        <div className="flex items-center justify-center gap-2 rounded-xl bg-pending-soft px-3 py-2.5 text-center text-xs font-semibold text-pending">
-          {disabledReason}
+        <div className="flex flex-col items-center gap-2.5 rounded-xl bg-pending-soft px-3 py-2.5 text-center text-xs font-semibold text-pending sm:flex-row sm:justify-between sm:text-start">
+          <span>{disabledReason}</span>
+          {onReopenWithTemplate && (
+            <Button type="button" variant="primary" size="sm" onClick={onReopenWithTemplate} className="shrink-0">
+              <Send size={13} className="rtl:-scale-x-100" /> {t('composer.reopenWithTemplate')}
+            </Button>
+          )}
         </div>
       </div>
     );

@@ -117,7 +117,8 @@
     "dropHere": "Drop file here to attach",
     "uploading": "Uploading… {{percent}}%",
     "cancelUpload": "Cancel upload",
-    "captionPlaceholder": "Add a caption (optional)…"
+    "captionPlaceholder": "Add a caption (optional)…",
+    "reopenWithTemplate": "Send a template to reopen"
   },
   "recorder": {
     "start": "Start recording",

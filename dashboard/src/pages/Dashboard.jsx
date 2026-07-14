@@ -483,6 +483,11 @@ export default function Dashboard() {
             <Composer
               disabled={!!composerDisabledReason}
               disabledReason={composerDisabledReason}
+              onReopenWithTemplate={
+                conversation.status !== 'closed' && detail?.serviceWindow && !detail.serviceWindow.open
+                  ? () => setShowNewConversation(true)
+                  : null
+              }
               replyTo={replyTo}
               onCancelReply={() => setReplyTo(null)}
               onSendText={handleSendText}
@@ -535,6 +540,8 @@ export default function Dashboard() {
       <NewConversationModal
         open={showNewConversation}
         onClose={() => setShowNewConversation(false)}
+        initialPhone={conversation?.wa_id || ''}
+        initialName={conversation?.customer_name || ''}
         onCreated={async (conv) => {
           setShowNewConversation(false);
           await loadConversations(true);
