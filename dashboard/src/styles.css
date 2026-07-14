@@ -24,14 +24,15 @@
   --shadow-pop: 0 8px 30px -8px rgb(16 35 27 / 0.25);
 }
 
-/* Brand palette derived from the Al Yafour logo: orange #e8820d on gray/white. */
+/* Brand: Al Yafour logo orange (#e8820d) used as an ACCENT over a neutral
+   white/gray base — the chrome itself stays gray, orange marks actions. */
 :root {
-  --bg: #f6f5f3;
+  --bg: #f5f5f4;
   --surface: #ffffff;
-  --surface-2: #efedea;
-  --border: #e3e0db;
-  --text: #211e1a;
-  --text-muted: #756f67;
+  --surface-2: #efefee;
+  --border: #e4e3e1;
+  --text: #1e1d1b;
+  --text-muted: #6f6e6a;
   --brand: #e8820d;
   --brand-strong: #c26603;
   --brand-soft: #fdeeda;
@@ -41,31 +42,31 @@
   --pending-soft: #e5edfd;
 
   /* Chat area */
-  --chat-bg: #efeae3;
-  --bubble-out: #fbe7cd;
-  --bubble-agent: #f9ddb6;
+  --chat-bg: #ececeb;
+  --bubble-out: #fdf1e1;
+  --bubble-agent: #fae8cd;
 
   --ring: color-mix(in srgb, var(--brand) 45%, transparent);
 }
 
 [data-theme='dark'] {
-  --bg: #141311;
-  --surface: #1c1a18;
-  --surface-2: #26231f;
-  --border: #383430;
-  --text: #f1efec;
-  --text-muted: #a49d93;
+  --bg: #131416;
+  --surface: #1b1d20;
+  --surface-2: #25272b;
+  --border: #35383d;
+  --text: #edeef0;
+  --text-muted: #9aa0a6;
   --brand: #f5941f;
   --brand-strong: #ffb45c;
-  --brand-soft: #3b2a13;
+  --brand-soft: #33281a;
   --danger: #ff7168;
-  --danger-soft: #3c211f;
+  --danger-soft: #3c2422;
   --pending: #7fb0ff;
   --pending-soft: #1d2c45;
 
-  --chat-bg: #100f0d;
-  --bubble-out: #4a3314;
-  --bubble-agent: #573b16;
+  --chat-bg: #0f1012;
+  --bubble-out: #2c2f34;
+  --bubble-agent: #33373d;
 
   --ring: color-mix(in srgb, var(--brand) 55%, transparent);
 }
@@ -126,8 +127,14 @@ select:focus {
 
 /* ─── WhatsApp-style chat bubbles (kept as hand-authored CSS; expressing
    the tail/asymmetric radius cleanly in pure utilities is impractical) ─── */
-.bubble {
+/* Width is constrained by .bubble-wrap (a flex item of the message row,
+   whose width is definite) — a %-max-width directly on .bubble resolves
+   against a shrink-to-fit parent and lets fixed-width children overflow. */
+.bubble-wrap {
   max-width: min(78%, 560px);
+}
+.bubble {
+  max-width: 100%;
   border-radius: 16px;
   box-shadow: 0 1px 1.5px rgb(0 0 0 / 0.1);
   word-wrap: break-word;
@@ -223,9 +230,9 @@ html[dir='ltr'] .bubble-row--out .bubble {
   }
 }
 .login-gradient {
-  background: linear-gradient(130deg, #211d18, #453a2e, #b96a08, #e8820d);
-  background-size: 300% 300%;
-  animation: gradient-drift 14s ease infinite;
+  background: linear-gradient(135deg, #232528, #33363b, #4a4038, #e8820d);
+  background-size: 280% 280%;
+  animation: gradient-drift 16s ease infinite;
 }
 
 /* react-i18next Suspense fallback + generic full-screen loader */

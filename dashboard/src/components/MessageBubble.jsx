@@ -143,7 +143,7 @@ export default function MessageBubble({ message, contextMessage, reactionEmoji, 
       case 'location': {
         const mapsUrl = `https://www.google.com/maps?q=${message.latitude},${message.longitude}`;
         return (
-          <a href={mapsUrl} target="_blank" rel="noreferrer" className="block w-56 overflow-hidden rounded-xl border border-black/10 hover:brightness-95 dark:border-white/10">
+          <a href={mapsUrl} target="_blank" rel="noreferrer" className="block w-56 max-w-full overflow-hidden rounded-xl border border-black/10 hover:brightness-95 dark:border-white/10">
             {/* Stylized map preview (no external tiles: grid + roads + pin) */}
             <div className="relative h-24 bg-gradient-to-br from-emerald-100 to-sky-100 dark:from-emerald-950 dark:to-sky-950">
               <div className="absolute inset-0 opacity-40 [background-image:linear-gradient(rgba(0,0,0,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.12)_1px,transparent_1px)] [background-size:20px_20px]" />
@@ -202,7 +202,7 @@ export default function MessageBubble({ message, contextMessage, reactionEmoji, 
 
   return (
     <div className={`group flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
-      <div className="relative">
+      <div className="bubble-wrap relative min-w-0">
         <div className={`bubble bubble--${message.sender_type} bubble-row--${isOutbound ? 'out' : 'in'} px-3 py-2`}>
           {senderLabel && (
             <div className="mb-0.5 text-[11px] font-bold text-brand-strong">
@@ -212,7 +212,7 @@ export default function MessageBubble({ message, contextMessage, reactionEmoji, 
           )}
           <ContextPreview contextMessage={contextMessage} />
           {renderBody()}
-          <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-text-muted">
+          <div className="mt-1 flex items-center justify-end gap-1 whitespace-nowrap text-[10px] text-text-muted">
             <span title={exactTimestamp}>{formatClock(message.created_at, i18n.language)}</span>
             {StatusIcon && <StatusIcon size={13} className={message.status === 'failed' ? 'text-danger' : message.status === 'read' ? 'text-sky-500' : ''} />}
           </div>
