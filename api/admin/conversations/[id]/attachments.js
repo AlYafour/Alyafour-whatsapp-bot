@@ -5,6 +5,7 @@ const {
   getConversationById,
   recordOutboundMessage,
   touchConversationOnOutbound,
+  takeOverOnAgentReply,
   logAudit,
 } = require('../../../../lib/conversationService');
 const { uploadMediaToMeta, sendMediaMessage } = require('../../../../lib/whatsappMedia');
@@ -131,6 +132,10 @@ module.exports = withAuth(async (req, res) => {
     });
 
     await touchConversationOnOutbound(id, { text: caption || `[${messageType}]`, resetUnread: true });
+    const takenOver = await takeOverOnAgentReply(id, req.user.id);
+    if (takenOver) {
+      await logAudit({ userId: req.user.id, conversationId: id, action: 'switch_to_human', metadata: { auto: true } });
+    }
     await logAudit({
       userId: req.user.id,
       conversationId: id,

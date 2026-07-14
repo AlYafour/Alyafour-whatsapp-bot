@@ -1,5 +1,5 @@
 const { withAuth } = require('../../../../lib/authMiddleware');
-const { getConversationById, logAudit } = require('../../../../lib/conversationService');
+const { getConversationById, logAudit, takeOverOnAgentReply } = require('../../../../lib/conversationService');
 const { sendAndLogMessage } = require('../../../../lib/messagingService');
 const { isValidUuid, sanitizeText } = require('../../../../lib/validation');
 
@@ -49,6 +49,13 @@ module.exports = withAuth(async (req, res) => {
         message: error.message || 'Failed to send message via WhatsApp',
         savedMessage: message,
       });
+    }
+
+    // Replying on a bot conversation silently takes it over so the bot
+    // doesn't answer the customer behind the agent's back.
+    const takenOver = await takeOverOnAgentReply(id, req.user.id);
+    if (takenOver) {
+      await logAudit({ userId: req.user.id, conversationId: id, action: 'switch_to_human', metadata: { auto: true } });
     }
 
     await logAudit({ userId: req.user.id, conversationId: id, action: 'agent_reply', metadata: { messageId: message.id } });

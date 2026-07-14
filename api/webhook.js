@@ -44,6 +44,36 @@ function detectLanguage(text) {
   return /[؀-ۿ]/.test(text) ? 'ar' : 'en';
 }
 
+// ─── Conversational classifiers ──────────────────────────────────────────────
+// A short thanks/ok/bye gets a brief courteous reply — never the full menu.
+const PLEASANTRY_WORDS = new Set([
+  'ok', 'okay', 'okey', 'okie', 'oki', 'k', 'kk', 'fine', 'great', 'perfect', 'nice', 'good', 'noted',
+  'thanks', 'thank', 'thankyou', 'thx', 'ty', 'you', 'welcome', 'bye', 'goodbye', 'anytime',
+  'sir', 'madam', 'maam', 'dear', 'boss', 'bro',
+  'تمام', 'طيب', 'ماشي', 'اوك', 'أوك', 'اوكي', 'اوكى', 'اوكيه', 'حسنا', 'حسناً',
+  'شكرا', 'شكراً', 'مشكور', 'مشكورة', 'تسلم', 'تسلمي', 'يعطيك', 'العافية', 'جزاك', 'الله', 'خير', 'خيرا',
+  'مع', 'السلامة', 'وداعا', 'وداعاً', 'ولا', 'يهمك', 'عفوا', 'عفواً', 'اهلين',
+]);
+
+function isPleasantry(text) {
+  const words = String(text || '')
+    .replace(/[!.،,؟?😀-🿿🙏👍❤️✨🌹]/gu, ' ')
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!words.length || words.length > 6) return false;
+  return words.every((w) => PLEASANTRY_WORDS.has(w));
+}
+
+// Pure greetings re-show the welcome menu; anything else goes to the AI.
+const GREETING_RE =
+  /^(?:hi+|hello+|hey+|good\s*(?:morning|afternoon|evening)|السلام\s*عليكم(?:\s*ورحمة\s*الله(?:\s*وبركاته)?)?|سلام|مرحبا|مرحباً|هلا|اهلا|أهلا|اهلاً|أهلاً|صباح\s*الخير|مساء\s*الخير)[\s!.،,؟?]*$/i;
+
+function isGreeting(text) {
+  return GREETING_RE.test(String(text || '').trim());
+}
+
 const MEDIA_TYPES = ['image', 'video', 'document'];
 
 // ─── Classify an inbound Meta message into our storage shape ──────────────────
@@ -327,12 +357,21 @@ module.exports = async (req, res) => {
 
     let session = await getSession(from);
 
+    // ── Short thanks/ok/bye: a brief courteous reply, never the menu ─────────
+    if (isPleasantry(text)) {
+      const lang = session.language || detectLanguage(text);
+      await sendAndLogMessage({ conversationId: conversation.id, waId: from, text: MENUS[lang].pleasantry, senderType: 'bot' });
+      session.lastActivity = Date.now();
+      await saveSession(from, session);
+      return res.status(200).json({ status: 'ok' });
+    }
+
     // ── Fresh start or inactivity timeout ────────────────────────────────────
     const isNew = session.step === 'language_selection' && !session.language;
     const timedOut = session.step !== 'language_selection' && isSessionExpired(session);
 
     if (isNew || timedOut) {
-      const lang = detectLanguage(text);
+      const lang = (timedOut && session.language) || detectLanguage(text);
       session = defaultSession();
       session.language = lang;
       session.step = 'chat';
@@ -344,9 +383,14 @@ module.exports = async (req, res) => {
         return res.status(200).json({ status: 'ok' });
       }
 
-      await sendAndLogMessage({ conversationId: conversation.id, waId: from, text: MENUS[lang].welcome, senderType: 'bot' });
-      await saveSession(from, session);
-      return res.status(200).json({ status: 'ok' });
+      // The full welcome menu greets a brand-new customer or an explicit
+      // greeting; a returning customer with a real question falls through
+      // to the normal flow and gets a real answer instead of menu spam.
+      if (isNew || isGreeting(text)) {
+        await sendAndLogMessage({ conversationId: conversation.id, waId: from, text: MENUS[lang].welcome, senderType: 'bot' });
+        await saveSession(from, session);
+        return res.status(200).json({ status: 'ok' });
+      }
     }
 
     session.lastActivity = Date.now();
