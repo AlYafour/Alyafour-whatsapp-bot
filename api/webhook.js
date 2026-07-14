@@ -357,10 +357,8 @@ module.exports = async (req, res) => {
 
     let session = await getSession(from);
 
-    // ── Short thanks/ok/bye: a brief courteous reply, never the menu ─────────
+    // ── Short thanks/ok/bye: stay silent — no menu, no auto-reply ────────────
     if (isPleasantry(text)) {
-      const lang = session.language || detectLanguage(text);
-      await sendAndLogMessage({ conversationId: conversation.id, waId: from, text: MENUS[lang].pleasantry, senderType: 'bot' });
       session.lastActivity = Date.now();
       await saveSession(from, session);
       return res.status(200).json({ status: 'ok' });
