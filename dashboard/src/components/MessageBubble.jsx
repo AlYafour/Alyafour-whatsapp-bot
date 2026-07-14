@@ -25,7 +25,7 @@ function ContextPreview({ contextMessage }) {
   if (!contextMessage) return null;
   const label = contextMessage.text || contextMessage.caption || t(`messageTypes.${contextMessage.message_type}`);
   return (
-    <div className="mb-1.5 rounded-md border-s-2 border-brand bg-black/5 px-2 py-1 text-xs text-text-muted line-clamp-2">
+    <div className="mb-1.5 rounded-lg border-s-[3px] border-brand bg-black/5 px-2.5 py-1.5 text-xs text-text-muted line-clamp-2 dark:bg-white/5">
       {label}
     </div>
   );
@@ -91,7 +91,7 @@ export default function MessageBubble({ message, contextMessage, reactionEmoji, 
         : message.text || t('messageTypes.system');
     return (
       <div className="flex justify-center py-1">
-        <span className="rounded-full bg-surface-2 px-3 py-1 text-[11px] text-text-muted">{text}</span>
+        <span className="rounded-full bg-surface px-3.5 py-1 text-[11px] text-text-muted shadow-sm">{text}</span>
       </div>
     );
   }
@@ -199,7 +199,7 @@ export default function MessageBubble({ message, contextMessage, reactionEmoji, 
       <div className="relative">
         <div className={`bubble bubble--${message.sender_type} bubble-row--${isOutbound ? 'out' : 'in'} px-3 py-2`}>
           {senderLabel && (
-            <div className="mb-0.5 text-[11px] font-bold text-text-muted">
+            <div className="mb-0.5 text-[11px] font-bold text-brand-strong">
               {senderLabel}
               {message.message_type === 'template' && ` ${t('message.templateBadge')}`}
             </div>
@@ -208,7 +208,7 @@ export default function MessageBubble({ message, contextMessage, reactionEmoji, 
           {renderBody()}
           <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-text-muted">
             <span title={exactTimestamp}>{formatClock(message.created_at, i18n.language)}</span>
-            {StatusIcon && <StatusIcon size={12} className={message.status === 'failed' ? 'text-danger' : message.status === 'read' ? 'text-brand' : ''} />}
+            {StatusIcon && <StatusIcon size={13} className={message.status === 'failed' ? 'text-danger' : message.status === 'read' ? 'text-sky-500' : ''} />}
           </div>
         </div>
 

@@ -136,8 +136,10 @@ export default function Composer({ disabled, disabledReason, replyTo, onCancelRe
 
   if (disabled) {
     return (
-      <div className="border-t border-border bg-surface px-4 py-3 text-sm text-danger">
-        <span>{disabledReason}</span>
+      <div className="border-t border-border bg-surface px-4 py-3">
+        <div className="flex items-center justify-center gap-2 rounded-xl bg-pending-soft px-3 py-2.5 text-center text-xs font-semibold text-pending">
+          {disabledReason}
+        </div>
       </div>
     );
   }
@@ -217,8 +219,12 @@ export default function Composer({ disabled, disabledReason, replyTo, onCancelRe
       <form onSubmit={submitText} className="flex items-end gap-2">
         <DropdownMenu
           trigger={
-            <button type="button" className="rounded-lg p-2 text-text-muted hover:bg-surface-2" aria-label={t('composer.attach')}>
-              <Paperclip size={18} />
+            <button
+              type="button"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-2 hover:text-brand"
+              aria-label={t('composer.attach')}
+            >
+              <Paperclip size={19} />
             </button>
           }
           align="start"
@@ -239,14 +245,19 @@ export default function Composer({ disabled, disabledReason, replyTo, onCancelRe
           onPaste={onPaste}
           placeholder={t('composer.placeholder')}
           rows={1}
-          className="max-h-32 flex-1 resize-none rounded-2xl border border-border bg-surface px-4 py-2.5 text-sm outline-none focus:border-brand"
+          className="max-h-32 flex-1 resize-none rounded-3xl border border-border bg-surface-2/60 px-4 py-2.5 text-sm outline-none placeholder:text-text-muted/70"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) submitText(e);
           }}
         />
-        <Button type="submit" variant="primary" disabled={sending || !text.trim()} aria-label={t('composer.send')}>
-          <Send size={16} />
-        </Button>
+        <button
+          type="submit"
+          disabled={sending || !text.trim()}
+          aria-label={t('composer.send')}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-brand to-brand-strong text-white shadow-md transition-all duration-150 hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:shadow-none disabled:active:scale-100"
+        >
+          {sending ? <span className="spinner" /> : <Send size={17} className="rtl:-scale-x-100" />}
+        </button>
       </form>
 
       {error && <div className="mt-1.5 text-xs text-danger">{error}</div>}

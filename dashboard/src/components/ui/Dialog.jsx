@@ -9,10 +9,10 @@ export default function Dialog({ open, onOpenChange, title, children, wide }) {
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 bg-black/40 z-50 data-[state=open]:animate-in data-[state=open]:fade-in" />
+        <RadixDialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 data-[state=open]:animate-in data-[state=open]:fade-in" />
         <RadixDialog.Content
-          className={`fixed z-50 bg-surface text-text shadow-2xl focus:outline-none
-            inset-x-0 bottom-0 rounded-t-2xl max-h-[85vh] overflow-y-auto p-5
+          className={`anim-fade-up fixed z-50 bg-surface text-text shadow-2xl focus:outline-none
+            inset-x-0 bottom-0 rounded-t-3xl max-h-[85vh] overflow-y-auto p-5
             sm:inset-auto sm:top-1/2 sm:start-1/2 sm:-translate-x-1/2 rtl:sm:translate-x-1/2 sm:-translate-y-1/2
             sm:rounded-2xl sm:max-h-[90vh] sm:w-full ${wide ? 'sm:max-w-2xl' : 'sm:max-w-md'}`}
         >

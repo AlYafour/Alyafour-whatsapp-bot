@@ -8,7 +8,7 @@ export function DropdownMenu({ trigger, children, align = 'end' }) {
         <RadixDropdown.Content
           align={align}
           sideOffset={8}
-          className="z-50 min-w-[180px] rounded-lg border border-border bg-surface p-1.5 shadow-xl"
+          className="anim-fade-up z-50 min-w-[180px] rounded-xl border border-border bg-surface p-1.5 shadow-xl"
         >
           {children}
         </RadixDropdown.Content>
