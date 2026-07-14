@@ -12,7 +12,7 @@ export default function LanguageToggle() {
       onClick={() => setLanguage(next)}
       aria-label={t('language.switch')}
       title={next === 'ar' ? t('language.ar') : t('language.en')}
-      className="inline-flex items-center justify-center rounded-xl border border-border bg-surface px-2.5 py-2 text-xs font-bold text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
+      className="inline-flex h-9 items-center justify-center rounded-lg border border-border bg-surface px-2.5 text-xs font-bold text-text-muted shadow-sm transition-colors hover:bg-surface-2 hover:text-text"
     >
       {next === 'ar' ? 'عربي' : 'EN'}
     </button>

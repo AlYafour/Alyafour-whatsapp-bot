@@ -173,49 +173,70 @@ export default function Composer({ disabled, disabledReason, replyTo, onCancelRe
         </div>
       )}
 
+      {/* Attachment preview replaces the text row entirely — one clear send action. */}
       {pendingFile && (
-        <div className="mb-2 flex items-center gap-3 rounded-lg bg-surface-2 p-2">
-          {pendingFile.previewUrl ? (
-            <img src={pendingFile.previewUrl} alt="" className="h-14 w-14 rounded-md object-cover" />
-          ) : (
-            <FileText size={28} className="text-text-muted" />
-          )}
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold">{pendingFile.file.name}</div>
-            <div className="text-xs text-text-muted">{formatFileSize(pendingFile.file.size)}</div>
+        <div className="rounded-2xl border border-border bg-surface-2/60 p-3">
+          <div className="flex items-center gap-3">
+            {pendingFile.previewUrl ? (
+              <img src={pendingFile.previewUrl} alt="" className="h-16 w-16 rounded-lg object-cover ring-1 ring-border" />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-surface ring-1 ring-border">
+                <FileText size={26} className="text-text-muted" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold">{pendingFile.file.name}</div>
+              <div className="text-xs text-text-muted">{formatFileSize(pendingFile.file.size)}</div>
+              {uploadProgress !== null && (
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-border">
+                  <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${uploadProgress}%` }} />
+                </div>
+              )}
+            </div>
             {uploadProgress === null && (
+              <button
+                type="button"
+                onClick={() => setPendingFile(null)}
+                aria-label={t('composer.cancelReply')}
+                className="rounded-full p-2 text-text-muted hover:bg-surface-2 hover:text-danger"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+          {uploadProgress === null ? (
+            <div className="mt-2.5 flex items-end gap-2">
               <input
                 value={pendingFile.caption}
                 onChange={(e) => setPendingFile({ ...pendingFile, caption: e.target.value })}
                 placeholder={t('composer.captionPlaceholder')}
-                className="mt-1 w-full rounded border border-border bg-surface px-2 py-1 text-xs"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') sendPendingFile();
+                }}
+                className="flex-1 rounded-3xl border border-border bg-surface px-4 py-2.5 text-sm outline-none placeholder:text-text-muted/70"
               />
-            )}
-            {uploadProgress !== null && (
-              <div className="mt-1 h-1.5 w-full rounded bg-border">
-                <div className="h-full rounded bg-brand transition-all" style={{ width: `${uploadProgress}%` }} />
-              </div>
-            )}
-          </div>
-          {uploadProgress !== null ? (
-            <Button type="button" variant="ghost" size="sm" onClick={cancelUpload}>
-              {t('composer.cancelUpload')}
-            </Button>
+              <button
+                type="button"
+                onClick={sendPendingFile}
+                aria-label={t('composer.send')}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-brand to-brand-strong text-white shadow-md transition-all duration-150 hover:brightness-110 active:scale-95"
+              >
+                <Send size={17} className="rtl:-scale-x-100" />
+              </button>
+            </div>
           ) : (
-            <>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setPendingFile(null)}>
-                <X size={14} />
+            <div className="mt-2.5 flex justify-end">
+              <Button type="button" variant="ghost" size="sm" onClick={cancelUpload}>
+                {t('composer.cancelUpload')}
               </Button>
-              <Button type="button" variant="primary" size="sm" onClick={sendPendingFile}>
-                <Send size={14} />
-              </Button>
-            </>
+            </div>
           )}
         </div>
       )}
 
-      {showRecorder && <div className="mb-2"><VoiceRecorder onSend={handleVoiceSend} onClose={() => setShowRecorder(false)} /></div>}
+      {showRecorder && !pendingFile && <div className="mb-2"><VoiceRecorder onSend={handleVoiceSend} onClose={() => setShowRecorder(false)} /></div>}
 
+      {!pendingFile && (
       <form onSubmit={submitText} className="flex items-end gap-2">
         <DropdownMenu
           trigger={
@@ -259,6 +280,7 @@ export default function Composer({ disabled, disabledReason, replyTo, onCancelRe
           {sending ? <span className="spinner" /> : <Send size={17} className="rtl:-scale-x-100" />}
         </button>
       </form>
+      )}
 
       {error && <div className="mt-1.5 text-xs text-danger">{error}</div>}
 

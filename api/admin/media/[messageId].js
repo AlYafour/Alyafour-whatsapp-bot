@@ -58,9 +58,16 @@ module.exports = withAuth(async (req, res) => {
     if (!conversation) return res.status(404).json({ error: 'NOT_FOUND' });
 
     if (message.media_status !== 'stored' || !message.storage_url) {
+      let buffer;
+      let effectiveMime;
+      let fileSize;
+      let sha256;
       try {
-        const { buffer, mimeType, fileSize, sha256 } = await fetchMetaMedia(message.media_id);
-        const effectiveMime = message.mime_type || mimeType;
+        const downloaded = await fetchMetaMedia(message.media_id);
+        buffer = downloaded.buffer;
+        fileSize = downloaded.fileSize;
+        sha256 = downloaded.sha256;
+        effectiveMime = message.mime_type || downloaded.mimeType;
 
         if (!isAllowedMime(message.message_type, effectiveMime)) {
           throw new Error('Downloaded media type is not in the allowed list');
@@ -68,13 +75,24 @@ module.exports = withAuth(async (req, res) => {
         if (!isWithinSizeLimit(message.message_type, fileSize || buffer.length)) {
           throw new Error('Downloaded media exceeds the allowed size');
         }
+      } catch (err) {
+        console.error('[admin/media] download failed:', err.message);
+        await updateMessageMediaStorage(message.id, { mediaStatus: 'failed', mediaError: 'DOWNLOAD_FAILED' });
+        return res.status(502).json({
+          error: 'MEDIA_DOWNLOAD_FAILED',
+          message: 'تعذر تحميل هذا الملف. يمكنك إعادة المحاولة.',
+          retriable: true,
+        });
+      }
 
+      // Archive is best-effort: if blob storage is unavailable we still
+      // serve the freshly downloaded bytes instead of failing the request.
+      try {
         const stored = await uploadMedia({
           key: `conversations/${message.conversation_id}/${message.id}`,
           buffer,
           contentType: effectiveMime,
         });
-
         message = await updateMessageMediaStorage(message.id, {
           storageKey: stored.key,
           storageUrl: stored.url,
@@ -85,13 +103,13 @@ module.exports = withAuth(async (req, res) => {
           sha256,
         });
       } catch (err) {
-        console.error('[admin/media] download failed:', err.message);
-        await updateMessageMediaStorage(message.id, { mediaStatus: 'failed', mediaError: 'DOWNLOAD_FAILED' });
-        return res.status(502).json({
-          error: 'MEDIA_DOWNLOAD_FAILED',
-          message: 'تعذر تحميل هذا الملف. يمكنك إعادة المحاولة.',
-          retriable: true,
-        });
+        console.error('[admin/media] archive failed (serving directly):', err.message);
+        res.setHeader('Content-Type', effectiveMime || 'application/octet-stream');
+        res.setHeader('Content-Length', String(buffer.length));
+        const disposition = INLINE_TYPES.includes(message.message_type) ? 'inline' : 'attachment';
+        const filename = sanitizeFilename(message.filename || `${message.message_type}-${message.id}`);
+        res.setHeader('Content-Disposition', `${disposition}; filename="${filename}"`);
+        return res.status(200).end(buffer);
       }
     }
 

@@ -26,47 +26,48 @@
 
 /* Brand: Al Yafour logo orange (#e8820d) used as an ACCENT over a neutral
    white/gray base — the chrome itself stays gray, orange marks actions. */
+/* Neutral base follows the shadcn zinc scale; orange is reserved for accents. */
 :root {
-  --bg: #f5f5f4;
+  --bg: #fafafa;
   --surface: #ffffff;
-  --surface-2: #efefee;
-  --border: #e4e3e1;
-  --text: #1e1d1b;
-  --text-muted: #6f6e6a;
+  --surface-2: #f4f4f5;
+  --border: #e4e4e7;
+  --text: #18181b;
+  --text-muted: #71717a;
   --brand: #e8820d;
   --brand-strong: #c26603;
   --brand-soft: #fdeeda;
-  --danger: #c22f27;
-  --danger-soft: #fdecea;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
   --pending: #2563eb;
-  --pending-soft: #e5edfd;
+  --pending-soft: #dbeafe;
 
   /* Chat area */
-  --chat-bg: #ececeb;
+  --chat-bg: #efeff0;
   --bubble-out: #fdf1e1;
-  --bubble-agent: #fae8cd;
+  --bubble-agent: #fbe7cb;
 
   --ring: color-mix(in srgb, var(--brand) 45%, transparent);
 }
 
 [data-theme='dark'] {
-  --bg: #131416;
-  --surface: #1b1d20;
-  --surface-2: #25272b;
-  --border: #35383d;
-  --text: #edeef0;
-  --text-muted: #9aa0a6;
+  --bg: #0f0f11;
+  --surface: #18181b;
+  --surface-2: #27272a;
+  --border: #303036;
+  --text: #fafafa;
+  --text-muted: #a1a1aa;
   --brand: #f5941f;
   --brand-strong: #ffb45c;
-  --brand-soft: #33281a;
-  --danger: #ff7168;
-  --danger-soft: #3c2422;
+  --brand-soft: #2e2418;
+  --danger: #f87171;
+  --danger-soft: #3a2323;
   --pending: #7fb0ff;
   --pending-soft: #1d2c45;
 
-  --chat-bg: #0f1012;
-  --bubble-out: #2c2f34;
-  --bubble-agent: #33373d;
+  --chat-bg: #0b0b0d;
+  --bubble-out: #27272a;
+  --bubble-agent: #2e2e33;
 
   --ring: color-mix(in srgb, var(--brand) 55%, transparent);
 }

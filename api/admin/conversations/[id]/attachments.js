@@ -122,7 +122,10 @@ module.exports = withAuth(async (req, res) => {
       mimeType: effectiveMime,
       storageKey,
       storageUrl,
-      mediaStatus: storageUrl ? 'stored' : 'failed',
+      // Keep Meta's media id so the media proxy can lazily re-download the
+      // file even when the blob archive fails (e.g. missing credentials).
+      mediaId,
+      mediaStatus: storageUrl ? 'stored' : 'pending',
       contextMessageWaId,
       text: caption,
     });
