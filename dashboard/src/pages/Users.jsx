@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, ArrowLeft, UserPlus, Users as UsersIcon, ShieldCheck } from 'lucide-react';
+import { UserPlus, Users as UsersIcon, ShieldCheck } from 'lucide-react';
 import { api } from '../api';
 import { translateApiError } from '../utils/apiError';
 import { useToast } from '../contexts/ToastContext';
 import Button from '../components/ui/Button';
 import Avatar from '../components/Avatar';
+import TopNav from '../components/TopNav';
 
 const emptyForm = { name: '', email: '', password: '', role: 'agent' };
 
@@ -14,10 +14,8 @@ const inputClass =
   'rounded-xl border border-border bg-surface-2/50 px-3.5 py-2.5 text-sm font-normal text-text';
 
 export default function Users() {
-  const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
+  const { t } = useTranslation();
   const toast = useToast();
-  const BackIcon = i18n.dir() === 'rtl' ? ArrowRight : ArrowLeft;
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,11 +68,9 @@ export default function Users() {
 
   return (
     <div className="min-h-screen bg-bg">
+      <TopNav />
       <div className="anim-fade-up mx-auto max-w-3xl px-4 py-6 pb-16">
         <header className="mb-5 flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => navigate('/dashboard')}>
-            <BackIcon size={14} /> {t('nav.backToConversations')}
-          </Button>
           <h1 className="flex items-center gap-2 text-lg font-bold">
             <UsersIcon size={18} className="text-brand" />
             {t('users.title')}

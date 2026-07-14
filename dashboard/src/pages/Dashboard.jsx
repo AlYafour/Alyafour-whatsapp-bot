@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight, ArrowLeft, Users as UsersIcon, LogOut, Plus, Bell, BellOff, History, MessageCircle, MessagesSquare } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Plus, Bell, BellOff, History, MessageCircle, MessagesSquare } from 'lucide-react';
 import { api } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { translateApiError } from '../utils/apiError';
 import { useNotifications } from '../hooks/useNotifications';
 import { usePushSubscription } from '../hooks/usePushSubscription';
+import TopNav from '../components/TopNav';
 import ConversationListItem from '../components/ConversationListItem';
 import MessageBubble from '../components/MessageBubble';
 import Composer from '../components/Composer';
@@ -15,8 +16,6 @@ import Filters from '../components/Filters';
 import ConfirmDialog from '../components/ConfirmDialog';
 import NewConversationModal from '../components/NewConversationModal';
 import Lightbox from '../components/Lightbox';
-import ThemeToggle from '../components/ThemeToggle';
-import LanguageToggle from '../components/LanguageToggle';
 import ActivityTimeline from '../components/ActivityTimeline';
 import Avatar from '../components/Avatar';
 import Dialog from '../components/ui/Dialog';
@@ -41,8 +40,7 @@ function newIdempotencyKey() {
 
 export default function Dashboard() {
   const { t, i18n } = useTranslation();
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const toast = useToast();
   const BackIcon = i18n.dir() === 'rtl' ? ArrowRight : ArrowLeft;
 
@@ -285,60 +283,29 @@ export default function Dashboard() {
   }
 
   return (
-    <div className={`flex h-[100dvh] bg-surface-2 ${selectedId ? '[--pane:flex]' : ''}`}>
+    <div className={`flex h-[100dvh] flex-col bg-surface-2 ${selectedId ? '[--pane:flex]' : ''}`}>
+      <TopNav>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            const next = !notifications.muted;
+            notifications.setMuted(next);
+            if (!next && pushSubscription.supported && !pushSubscription.subscribed) pushSubscription.subscribe();
+          }}
+          aria-label={notifications.muted ? t('notifications.unmute') : t('notifications.mute')}
+          title={notifications.permission === 'denied' ? t('notifications.permissionDenied') : undefined}
+        >
+          {notifications.muted ? <BellOff size={16} /> : <Bell size={16} />}
+        </Button>
+      </TopNav>
+
+      <div className="flex min-h-0 flex-1">
       <aside className={`${selectedId ? 'hidden' : 'flex'} md:flex w-full md:w-[340px] shrink-0 flex-col border-e border-border bg-surface`}>
-        <div className="border-b border-border bg-gradient-to-b from-brand-soft/60 to-transparent px-3.5 pb-3 pt-3.5">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-md ring-1 ring-border">
-                <img src="/icons/logo.png" alt="Al Yafour" className="h-full w-full object-contain" />
-              </div>
-              <div className="min-w-0">
-                <div className="truncate text-sm font-bold leading-tight">{t('sidebar.title')}</div>
-                <div className="truncate text-[11px] text-text-muted">
-                  {user?.name}
-                  <span className="mx-1.5 inline-block rounded-full bg-brand-soft px-1.5 py-px text-[10px] font-semibold text-brand-strong">
-                    {user?.role === 'admin' ? t('sidebar.roleAdmin') : t('sidebar.roleAgent')}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="flex shrink-0 items-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  const next = !notifications.muted;
-                  notifications.setMuted(next);
-                  if (!next && pushSubscription.supported && !pushSubscription.subscribed) pushSubscription.subscribe();
-                }}
-                aria-label={notifications.muted ? t('notifications.unmute') : t('notifications.mute')}
-                title={notifications.permission === 'denied' ? t('notifications.permissionDenied') : undefined}
-              >
-                {notifications.muted ? <BellOff size={15} /> : <Bell size={15} />}
-              </Button>
-              {user?.role === 'admin' && (
-                <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/activity')} aria-label={t('activity.globalTitle')}>
-                  <History size={15} />
-                </Button>
-              )}
-              {user?.role === 'admin' && (
-                <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/users')} aria-label={t('nav.users')}>
-                  <UsersIcon size={15} />
-                </Button>
-              )}
-              <Button variant="ghost" size="sm" onClick={logout} aria-label={t('auth.logout')} className="hover:!bg-danger-soft hover:!text-danger">
-                <LogOut size={15} />
-              </Button>
-            </div>
-          </div>
-          <div className="mt-3 flex items-center gap-1.5">
-            <Button variant="primary" onClick={() => setShowNewConversation(true)} className="flex-1 justify-center">
-              <Plus size={15} /> {t('sidebar.newConversation')}
-            </Button>
-            <ThemeToggle />
-            <LanguageToggle />
-          </div>
+        <div className="border-b border-border bg-gradient-to-b from-brand-soft/60 to-transparent px-3.5 py-3">
+          <Button variant="primary" onClick={() => setShowNewConversation(true)} className="w-full justify-center">
+            <Plus size={15} /> {t('sidebar.newConversation')}
+          </Button>
         </div>
 
         <Filters active={tab} onChange={setTab} search={search} onSearchChange={setSearch} />
@@ -514,6 +481,7 @@ export default function Dashboard() {
           </>
         )}
       </main>
+      </div>
 
       <ConfirmDialog
         open={confirmReturnToBot}

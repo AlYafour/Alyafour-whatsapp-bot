@@ -32,6 +32,7 @@
   "nav": {
     "conversations": "Conversations",
     "users": "Users",
+    "activity": "Activity",
     "backToConversations": "Back to conversations",
     "back": "Back"
   },

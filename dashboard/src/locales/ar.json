@@ -32,6 +32,7 @@
   "nav": {
     "conversations": "المحادثات",
     "users": "المستخدمون",
+    "activity": "السجل",
     "backToConversations": "الرجوع للمحادثات",
     "back": "رجوع"
   },
