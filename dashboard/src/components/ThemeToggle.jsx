@@ -1,39 +1,24 @@
 import { useTranslation } from 'react-i18next';
-import { Sun, Moon, Monitor } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
-import { DropdownMenu, DropdownItem } from './ui/DropdownMenu';
-import { Tooltip } from './ui/Tooltip';
 
-const ICONS = { light: Sun, dark: Moon, system: Monitor };
-
+// One-click light/dark toggle. The icon shows the mode you'll switch TO.
 export default function ThemeToggle() {
   const { t } = useTranslation();
   const { mode, setMode } = useTheme();
-  const Icon = ICONS[mode];
+  const isDark =
+    mode === 'dark' ||
+    (mode === 'system' && (window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false));
 
   return (
-    <DropdownMenu
-      trigger={
-        <Tooltip label={t('theme.toggle')}>
-          <button
-            type="button"
-            aria-label={t('theme.toggle')}
-            className="inline-flex items-center justify-center rounded-lg border border-border bg-surface p-2 hover:bg-surface-2"
-          >
-            <Icon size={16} />
-          </button>
-        </Tooltip>
-      }
+    <button
+      type="button"
+      onClick={() => setMode(isDark ? 'light' : 'dark')}
+      aria-label={t('theme.toggle')}
+      title={isDark ? t('theme.light') : t('theme.dark')}
+      className="inline-flex items-center justify-center rounded-xl border border-border bg-surface p-2 text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
     >
-      <DropdownItem icon={Sun} onSelect={() => setMode('light')}>
-        {t('theme.light')}
-      </DropdownItem>
-      <DropdownItem icon={Moon} onSelect={() => setMode('dark')}>
-        {t('theme.dark')}
-      </DropdownItem>
-      <DropdownItem icon={Monitor} onSelect={() => setMode('system')}>
-        {t('theme.system')}
-      </DropdownItem>
-    </DropdownMenu>
+      {isDark ? <Sun size={16} /> : <Moon size={16} />}
+    </button>
   );
 }
