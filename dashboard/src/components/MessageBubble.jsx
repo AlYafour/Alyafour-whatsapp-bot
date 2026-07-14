@@ -62,7 +62,7 @@ function MediaImage({ message, onOpenLightbox }) {
         onLoad={() => setStatus('loaded')}
         onError={() => setStatus('error')}
         onClick={() => onOpenLightbox(src)}
-        className="max-h-72 max-w-full cursor-pointer rounded-lg object-cover"
+        className="max-h-72 min-h-16 min-w-32 max-w-full cursor-pointer rounded-lg object-cover transition-opacity hover:opacity-90"
       />
     </div>
   );
@@ -143,12 +143,18 @@ export default function MessageBubble({ message, contextMessage, reactionEmoji, 
       case 'location': {
         const mapsUrl = `https://www.google.com/maps?q=${message.latitude},${message.longitude}`;
         return (
-          <a href={mapsUrl} target="_blank" rel="noreferrer" className="flex items-start gap-2 rounded-lg bg-black/5 px-3 py-2.5 hover:bg-black/10">
-            <MapPin size={20} className="mt-0.5 shrink-0 text-danger" />
-            <div className="min-w-0">
-              {message.location_name && <div className="text-sm font-semibold">{message.location_name}</div>}
-              {message.location_address && <div className="text-xs text-text-muted">{message.location_address}</div>}
-              <div className="text-xs text-brand underline">{t('message.openInMaps')}</div>
+          <a href={mapsUrl} target="_blank" rel="noreferrer" className="block w-56 overflow-hidden rounded-xl border border-black/10 hover:brightness-95 dark:border-white/10">
+            {/* Stylized map preview (no external tiles: grid + roads + pin) */}
+            <div className="relative h-24 bg-gradient-to-br from-emerald-100 to-sky-100 dark:from-emerald-950 dark:to-sky-950">
+              <div className="absolute inset-0 opacity-40 [background-image:linear-gradient(rgba(0,0,0,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.12)_1px,transparent_1px)] [background-size:20px_20px]" />
+              <div className="absolute inset-x-0 top-1/3 h-2 -rotate-6 bg-white/70 dark:bg-white/20" />
+              <div className="absolute inset-y-0 start-1/4 w-1.5 rotate-3 bg-white/60 dark:bg-white/15" />
+              <MapPin size={30} className="absolute start-1/2 top-1/2 -translate-x-1/2 rtl:translate-x-1/2 -translate-y-full fill-danger/20 text-danger drop-shadow" />
+            </div>
+            <div className="bg-black/5 px-3 py-2 dark:bg-white/5">
+              {message.location_name && <div className="truncate text-sm font-semibold">{message.location_name}</div>}
+              {message.location_address && <div className="truncate text-xs text-text-muted">{message.location_address}</div>}
+              <div className="mt-0.5 text-xs font-semibold text-brand">{t('message.openInMaps')}</div>
             </div>
           </a>
         );

@@ -24,47 +24,48 @@
   --shadow-pop: 0 8px 30px -8px rgb(16 35 27 / 0.25);
 }
 
+/* Brand palette derived from the Al Yafour logo: orange #e8820d on gray/white. */
 :root {
-  --bg: #eef3f0;
+  --bg: #f6f5f3;
   --surface: #ffffff;
-  --surface-2: #e8efeb;
-  --border: #dbe4df;
-  --text: #13221b;
-  --text-muted: #64766d;
-  --brand: #0c8050;
-  --brand-strong: #075e39;
-  --brand-soft: #ddf1e6;
+  --surface-2: #efedea;
+  --border: #e3e0db;
+  --text: #211e1a;
+  --text-muted: #756f67;
+  --brand: #e8820d;
+  --brand-strong: #c26603;
+  --brand-soft: #fdeeda;
   --danger: #c22f27;
   --danger-soft: #fdecea;
-  --pending: #a86200;
-  --pending-soft: #fff3dd;
+  --pending: #2563eb;
+  --pending-soft: #e5edfd;
 
   /* Chat area */
-  --chat-bg: #e4ece7;
-  --bubble-out: #d7f3e3;
-  --bubble-agent: #cdeedd;
+  --chat-bg: #efeae3;
+  --bubble-out: #fbe7cd;
+  --bubble-agent: #f9ddb6;
 
   --ring: color-mix(in srgb, var(--brand) 45%, transparent);
 }
 
 [data-theme='dark'] {
-  --bg: #0c1210;
-  --surface: #131b17;
-  --surface-2: #1b2620;
-  --border: #283630;
-  --text: #e9f1ec;
-  --text-muted: #93a89d;
-  --brand: #27c17d;
-  --brand-strong: #4ade9c;
-  --brand-soft: #163427;
+  --bg: #141311;
+  --surface: #1c1a18;
+  --surface-2: #26231f;
+  --border: #383430;
+  --text: #f1efec;
+  --text-muted: #a49d93;
+  --brand: #f5941f;
+  --brand-strong: #ffb45c;
+  --brand-soft: #3b2a13;
   --danger: #ff7168;
   --danger-soft: #3c211f;
-  --pending: #ffbd57;
-  --pending-soft: #3a2d16;
+  --pending: #7fb0ff;
+  --pending-soft: #1d2c45;
 
-  --chat-bg: #0a100e;
-  --bubble-out: #14503a;
-  --bubble-agent: #175a41;
+  --chat-bg: #100f0d;
+  --bubble-out: #4a3314;
+  --bubble-agent: #573b16;
 
   --ring: color-mix(in srgb, var(--brand) 55%, transparent);
 }
@@ -222,7 +223,7 @@ html[dir='ltr'] .bubble-row--out .bubble {
   }
 }
 .login-gradient {
-  background: linear-gradient(130deg, #064530, #0c8050, #0e9d63, #075e39);
+  background: linear-gradient(130deg, #211d18, #453a2e, #b96a08, #e8820d);
   background-size: 300% 300%;
   animation: gradient-drift 14s ease infinite;
 }

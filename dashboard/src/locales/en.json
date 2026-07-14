@@ -13,7 +13,8 @@
       "submit": "Log in",
       "submitting": "Logging in…",
       "invalidCredentials": "Invalid email or password",
-      "rateLimited": "Too many login attempts, please try again later"
+      "rateLimited": "Too many login attempts, please try again later",
+      "license": "Trade License CN-1028096 — Abu Dhabi, UAE"
     },
     "logout": "Log out"
   },
@@ -214,7 +215,10 @@
     "address": "Address (optional)",
     "send": "Send location",
     "detecting": "Detecting location…",
-    "geolocationDenied": "Could not access location, enter coordinates manually"
+    "geolocationDenied": "Could not access location, enter coordinates manually",
+    "pasteLink": "Or paste a Google Maps link",
+    "pasteLinkPlaceholder": "https://maps.google.com/…",
+    "pasteLinkInvalid": "Could not read coordinates from this link"
   },
   "contact": {
     "title": "Send contact",

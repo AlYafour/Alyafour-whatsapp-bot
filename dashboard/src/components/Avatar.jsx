@@ -1,13 +1,13 @@
 // Deterministic gradient avatar: the same contact always gets the same colors.
 const GRADIENTS = [
-  'from-emerald-500 to-teal-700',
-  'from-sky-500 to-indigo-600',
-  'from-violet-500 to-purple-700',
-  'from-rose-500 to-pink-700',
+  'from-orange-400 to-orange-600',
+  'from-slate-500 to-slate-700',
   'from-amber-500 to-orange-700',
-  'from-cyan-500 to-blue-700',
-  'from-lime-500 to-green-700',
-  'from-fuchsia-500 to-violet-700',
+  'from-sky-500 to-indigo-600',
+  'from-rose-500 to-pink-700',
+  'from-teal-500 to-emerald-700',
+  'from-violet-500 to-purple-700',
+  'from-stone-500 to-stone-700',
 ];
 
 function hashCode(str) {

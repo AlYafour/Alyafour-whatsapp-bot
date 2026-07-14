@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MessageCircle, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
 import LanguageToggle from '../components/LanguageToggle';
@@ -47,12 +47,13 @@ export default function Login() {
         className="anim-fade-up relative w-full max-w-sm rounded-3xl bg-surface p-8 shadow-2xl flex flex-col gap-4"
       >
         <div className="flex flex-col items-center gap-3">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-brand to-brand-strong text-white shadow-lg">
-            <MessageCircle size={30} />
+          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-white p-3 shadow-lg ring-1 ring-border">
+            <img src="/icons/logo.png" alt="Al Yafour" className="h-full w-full object-contain" />
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-bold">{t('auth.login.title')}</h1>
-            <p className="mt-1 text-xs text-text-muted">{t('auth.login.subtitle')}</p>
+            <h1 className="text-xl font-bold">{t('auth.login.subtitle')}</h1>
+            <p className="mt-1 text-sm font-semibold text-brand-strong">{t('auth.login.title')}</p>
+            <p className="mt-1 text-[11px] text-text-muted">{t('auth.login.license')}</p>
           </div>
         </div>
 

@@ -290,8 +290,8 @@ export default function Dashboard() {
         <div className="border-b border-border bg-gradient-to-b from-brand-soft/60 to-transparent px-3.5 pb-3 pt-3.5">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2.5">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand to-brand-strong text-white shadow-md">
-                <MessageCircle size={20} />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white p-1.5 shadow-md ring-1 ring-border">
+                <img src="/icons/logo.png" alt="Al Yafour" className="h-full w-full object-contain" />
               </div>
               <div className="min-w-0">
                 <div className="truncate text-sm font-bold leading-tight">{t('sidebar.title')}</div>
