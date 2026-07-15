@@ -180,6 +180,14 @@
     "loadingTemplates": "جارِ تحميل القوالب المعتمدة…",
     "noTemplates": "لا توجد قوالب معتمدة مطابقة",
     "approved": "معتمد",
+    "status": {
+      "PENDING": "قيد المراجعة",
+      "IN_APPEAL": "قيد الاستئناف",
+      "REJECTED": "مرفوض",
+      "PAUSED": "موقوف مؤقتاً",
+      "DISABLED": "معطّل",
+      "LIMIT_EXCEEDED": "تجاوز الحد"
+    },
     "templateLanguage": "لغة القالب",
     "headerVariables": "متغيرات العنوان",
     "bodyVariables": "متغيرات نص الرسالة",

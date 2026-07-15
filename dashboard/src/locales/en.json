@@ -180,6 +180,14 @@
     "loadingTemplates": "Loading approved templates…",
     "noTemplates": "No matching approved templates",
     "approved": "Approved",
+    "status": {
+      "PENDING": "In review",
+      "IN_APPEAL": "In appeal",
+      "REJECTED": "Rejected",
+      "PAUSED": "Paused",
+      "DISABLED": "Disabled",
+      "LIMIT_EXCEEDED": "Limit exceeded"
+    },
     "templateLanguage": "Template language",
     "headerVariables": "Header variables",
     "bodyVariables": "Body variables",

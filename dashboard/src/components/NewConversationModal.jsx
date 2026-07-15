@@ -241,24 +241,40 @@ export default function NewConversationModal({ open, onClose, onCreated, initial
 
           {!templatesLoading && !templatesError && filteredTemplates.length > 0 && (
             <div className="flex max-h-40 flex-col gap-1 overflow-y-auto">
-              {filteredTemplates.map((tpl) => (
-                <button
-                  type="button"
-                  key={tpl.name}
-                  onClick={() => selectTemplate(tpl.name)}
-                  className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-start text-sm ${
-                    selectedName === tpl.name ? 'border-brand bg-brand-soft' : 'border-border bg-bg hover:bg-surface-2'
-                  }`}
-                >
-                  <span className="min-w-0 flex-1 truncate font-semibold">{tpl.name}</span>
-                  <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] text-text-muted">
-                    {t(`newConversation.category.${tpl.category}`, tpl.category)}
-                  </span>
-                  <span className="shrink-0 rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] text-brand-strong">
-                    {t('newConversation.approved')}
-                  </span>
-                </button>
-              ))}
+              {filteredTemplates.map((tpl) => {
+                const sendable = tpl.approved !== false;
+                const rawStatus = tpl.languages?.find((l) => l.status && l.status !== 'APPROVED')?.status;
+                return (
+                  <button
+                    type="button"
+                    key={tpl.name}
+                    disabled={!sendable}
+                    onClick={() => selectTemplate(tpl.name)}
+                    title={!sendable && rawStatus ? rawStatus : undefined}
+                    className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-start text-sm ${
+                      !sendable
+                        ? 'cursor-not-allowed border-border bg-bg opacity-55'
+                        : selectedName === tpl.name
+                          ? 'border-brand bg-brand-soft'
+                          : 'border-border bg-bg hover:bg-surface-2'
+                    }`}
+                  >
+                    <span className="min-w-0 flex-1 truncate font-semibold">{tpl.name}</span>
+                    <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] text-text-muted">
+                      {t(`newConversation.category.${tpl.category}`, tpl.category)}
+                    </span>
+                    {sendable ? (
+                      <span className="shrink-0 rounded-full border border-brand/30 bg-brand-soft px-2 py-0.5 text-[11px] text-brand-strong">
+                        {t('newConversation.approved')}
+                      </span>
+                    ) : (
+                      <span className="shrink-0 rounded-full border border-pending/30 bg-pending-soft px-2 py-0.5 text-[11px] text-pending">
+                        {t(`newConversation.status.${rawStatus}`, rawStatus || '—')}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
