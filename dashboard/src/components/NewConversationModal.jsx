@@ -29,6 +29,7 @@ export default function NewConversationModal({ open, onClose, onCreated, initial
   const [customerName, setCustomerName] = useState('');
 
   const [templates, setTemplates] = useState([]);
+  const [wabaId, setWabaId] = useState(null);
   const [templatesLoading, setTemplatesLoading] = useState(true);
   const [templatesError, setTemplatesError] = useState('');
 
@@ -53,6 +54,7 @@ export default function NewConversationModal({ open, onClose, onCreated, initial
     try {
       const data = await api.listTemplates(refresh);
       setTemplates(data.templates || []);
+      setWabaId(data.wabaId || null);
       setTemplatesError('');
     } catch (err) {
       setTemplatesError(translateApiError(err, t));
@@ -237,6 +239,12 @@ export default function NewConversationModal({ open, onClose, onCreated, initial
           {!templatesLoading && templatesError && <div className="py-4 text-center text-sm text-danger">{templatesError}</div>}
           {!templatesLoading && !templatesError && filteredTemplates.length === 0 && (
             <div className="py-4 text-center text-sm text-text-muted">{t('newConversation.noTemplates')}</div>
+          )}
+
+          {!templatesLoading && wabaId && (
+            <div className="pb-1 text-center text-[10px] text-text-muted" dir="ltr">
+              {t('newConversation.wabaSource')}: {wabaId} · {templates.length} {t('newConversation.templatesCount')}
+            </div>
           )}
 
           {!templatesLoading && !templatesError && filteredTemplates.length > 0 && (

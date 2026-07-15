@@ -180,6 +180,8 @@
     "loadingTemplates": "جارِ تحميل القوالب المعتمدة…",
     "noTemplates": "لا توجد قوالب معتمدة مطابقة",
     "approved": "معتمد",
+    "wabaSource": "حساب واتساب المصدر",
+    "templatesCount": "قالب",
     "status": {
       "PENDING": "قيد المراجعة",
       "IN_APPEAL": "قيد الاستئناف",

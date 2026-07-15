@@ -180,6 +180,8 @@
     "loadingTemplates": "Loading approved templates…",
     "noTemplates": "No matching approved templates",
     "approved": "Approved",
+    "wabaSource": "Source WhatsApp account",
+    "templatesCount": "templates",
     "status": {
       "PENDING": "In review",
       "IN_APPEAL": "In appeal",
